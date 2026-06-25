@@ -5,14 +5,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import axiosClient from '@/api/axiosClient';
 import { connectSocket } from '@/api/socket';
+import { Audio } from 'expo-av';
+import { Vibration } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DriverHome() {
   const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
+  const alarmSoundRef = React.useRef<Audio.Sound | null>(null);
+
+  const playAlarm = async () => {
+    if (alarmSoundRef.current) return;
+    try {
+      Vibration.vibrate([0, 500, 500, 500], true); // true = repeat
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg' },
+        { shouldPlay: true, isLooping: true }
+      );
+      alarmSoundRef.current = sound;
+    } catch (e) {
+      console.log('Error playing alarm', e);
+    }
+  };
+
+  const stopAlarm = async () => {
+    Vibration.cancel();
+    if (alarmSoundRef.current) {
+      try {
+        await alarmSoundRef.current.stopAsync();
+        await alarmSoundRef.current.unloadAsync();
+      } catch (e) {}
+      alarmSoundRef.current = null;
+    }
+  };
 
   useEffect(() => {
+    if (availableOrders.length > 0 && isOnline) {
+      playAlarm();
+    } else {
+      stopAlarm();
+    }
+    return () => {
+      stopAlarm();
+    };
+  }, [availableOrders, isOnline]);
+
+  useEffect(() => {
+    AsyncStorage.getItem('isOnline').then(val => {
+      if (val === 'true') {
+        setIsOnline(true);
+      }
+    });
+
     // Optionally fetch initial state if backend stores online status
     fetchAvailableOrders();
 
@@ -21,7 +67,7 @@ export default function DriverHome() {
       socket.emit('join_driver_room', user.id);
     }
 
-    socket.on('new_ride_request', (data) => {
+    socket.on('new_ride_request', async (data) => {
       console.log('New ride request received:', data);
       fetchAvailableOrders();
     });
@@ -60,6 +106,7 @@ export default function DriverHome() {
       }
 
       setIsOnline(value);
+      AsyncStorage.setItem('isOnline', value ? 'true' : 'false');
       await axiosClient.put('/driver/status', { isOnline: value });
     } catch (error) {
       console.log('Error updating status:', error);
@@ -70,9 +117,10 @@ export default function DriverHome() {
 
   const handleAcceptOrder = async (orderId: string) => {
     try {
+      stopAlarm(); // Stop immediately for UX
       await axiosClient.post('/driver/orders/accept', { orderId });
       Alert.alert('Thành công', 'Đã nhận cuốc xe!');
-      router.push('/(driver)/active_ride');
+      router.push({ pathname: '/(driver)/active_ride', params: { id: orderId } });
     } catch (error) {
       console.log('Error accepting order:', error);
       Alert.alert('Lỗi', 'Không thể nhận cuốc xe này. Có thể tài xế khác đã nhận.');
@@ -106,11 +154,24 @@ export default function DriverHome() {
 
       {isOnline ? (
         <View style={styles.onlineContainer}>
-          <View style={styles.radarEffect}>
-            <Ionicons name="radio-outline" size={60} color="#3399FF" />
-          </View>
-          <Text style={styles.waitingText}>Đang chờ cuốc xe mới...</Text>
-          <Text style={styles.subWaitingText}>Hãy giữ ứng dụng mở để nhận thông báo</Text>
+          {availableOrders.length === 0 && (
+            <>
+              <View style={styles.radarEffect}>
+                <Ionicons name="radio-outline" size={60} color="#3399FF" />
+              </View>
+              <Text style={styles.waitingText}>Đang chờ cuốc xe mới...</Text>
+              <Text style={styles.subWaitingText}>Hãy giữ ứng dụng mở để nhận thông báo</Text>
+            </>
+          )}
+
+          {availableOrders.length > 0 && (
+            <View style={{ marginTop: 20, marginBottom: 10, alignItems: 'center' }}>
+              <View style={[styles.radarEffect, { marginTop: 0, marginBottom: 10, backgroundColor: '#E6FFFA', borderColor: '#B2F5EA' }]}>
+                 <Ionicons name="notifications" size={50} color="#38A169" />
+              </View>
+              <Text style={[styles.waitingText, { color: '#38A169' }]}>Có cuốc xe mới!</Text>
+            </View>
+          )}
 
           {availableOrders.length === 0 ? (
             <Text style={{ textAlign: 'center', marginTop: 20, color: '#718096' }}>Chưa có cuốc xe nào quanh đây.</Text>
@@ -128,7 +189,7 @@ export default function DriverHome() {
                   <Text style={styles.orderPrice}>{parseFloat(order.total_amount).toLocaleString()}đ</Text>
                 </View>
                 <Text style={styles.addressText}><Ionicons name="location" color="#3182CE"/> Điểm đón: {order.pickup_address || 'Đang cập nhật'}</Text>
-                <Text style={styles.addressText}><Ionicons name="flag" color="#E53E3E"/> Điểm đến: {order.delivery_address || 'Đang cập nhật'}</Text>
+                <Text style={styles.addressText}><Ionicons name="flag" color="#E53E3E"/> Điểm đến: {order.destination_address || 'Đang cập nhật'}</Text>
                 <Text style={styles.tapToAccept}>Chạm để nhận cuốc!</Text>
               </TouchableOpacity>
             ))

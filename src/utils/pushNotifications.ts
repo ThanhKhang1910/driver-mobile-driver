@@ -42,15 +42,14 @@ export async function registerForPushNotificationsAsync() {
         Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
       
       if (!projectId) {
-         // Fallback if not using EAS Build
-         token = (await Notifications.getExpoPushTokenAsync()).data;
-      } else {
-         token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        console.warn('No EAS projectId found. Skipping Push Token registration for local dev.');
+        return 'dummy-token';
       }
+
+      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     } catch (e) {
-      console.error(e);
-      // Fallback
-      token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.warn('Could not get Expo Push Token:', e);
+      token = 'dummy-token';
     }
   } else {
     console.warn('Must use physical device for Push Notifications');

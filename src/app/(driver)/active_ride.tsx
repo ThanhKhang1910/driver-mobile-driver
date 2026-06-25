@@ -1,25 +1,27 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { io, Socket } from 'socket.io-client';
-import { getBaseURL } from '@/api/axiosClient';
+import axiosClient, { getBaseURL } from '@/api/axiosClient';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ActiveRide() {
   const router = useRouter();
+  const { id } = useLocalSearchParams();
   const { user } = useAuth();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [order, setOrder] = useState<any>(null);
+  const [status, setStatus] = useState('DRIVER_ASSIGNED');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
 
-  // Giả lập thông tin cuốc xe hiện tại. Trong thực tế lấy từ Params hoặc API
-  const orderId = 123; 
-
   useEffect(() => {
+    if (id) fetchOrderDetails();
     setupSocket();
     startTracking();
 
@@ -27,7 +29,17 @@ export default function ActiveRide() {
       if (socketRef.current) socketRef.current.disconnect();
       if (locationSubscription.current) locationSubscription.current.remove();
     };
-  }, []);
+  }, [id]);
+
+  const fetchOrderDetails = async () => {
+    try {
+      const res = await axiosClient.get(`/orders/${id}`);
+      setOrder(res.data);
+      setStatus(res.data.status || 'DRIVER_ASSIGNED');
+    } catch (error) {
+      console.log('Error fetching order details:', error);
+    }
+  };
 
   const setupSocket = () => {
     const socket = io(getBaseURL().replace('/api/v1', ''));
@@ -61,9 +73,9 @@ export default function ActiveRide() {
         setLocation(newLocation);
         
         // Phát tọa độ lên Server
-        if (socketRef.current) {
+        if (socketRef.current && id) {
           socketRef.current.emit('update_location', {
-            order_id: orderId,
+            order_id: id,
             latitude: newLocation.coords.latitude,
             longitude: newLocation.coords.longitude,
             heading: newLocation.coords.heading,
@@ -73,16 +85,25 @@ export default function ActiveRide() {
     );
   };
 
-  const handleComplete = () => {
-    Alert.alert('Thành công', 'Đã hoàn thành cuốc xe!', [
-      { 
-        text: 'OK', 
-        onPress: () => {
-          if (locationSubscription.current) locationSubscription.current.remove();
-          router.replace('/(driver)/home');
-        } 
+  const handleUpdateStatus = async (newStatus: string) => {
+    try {
+      await axiosClient.put('/driver/orders/status', { orderId: id, status: newStatus });
+      setStatus(newStatus);
+      if (newStatus === 'COMPLETED') {
+        Alert.alert('Thành công', 'Đã hoàn thành cuốc xe!', [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              if (locationSubscription.current) locationSubscription.current.remove();
+              router.replace('/(driver)/home');
+            } 
+          }
+        ]);
       }
-    ]);
+    } catch (error) {
+      console.log('Error updating status:', error);
+      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái');
+    }
   };
 
   return (
@@ -100,22 +121,33 @@ export default function ActiveRide() {
             showsUserLocation={true}
             followsUserLocation={true}
           >
-            {/* Vị trí của khách hàng (giả lập) */}
-            <Marker
-              coordinate={{ latitude: 10.7937, longitude: 106.7214 }}
-              title="Điểm đón"
-              description="Landmark 81"
-            >
-              <Ionicons name="person-circle" size={36} color="#3182CE" />
-            </Marker>
-            
-            <Marker
-              coordinate={{ latitude: 10.7725, longitude: 106.6980 }}
-              title="Điểm trả"
-              description="Chợ Bến Thành"
-            >
-              <Ionicons name="location-sharp" size={36} color="#E53E3E" />
-            </Marker>
+            {/* Vị trí của khách hàng */}
+            {order?.customer_latitude && order?.customer_longitude && (
+              <Marker
+                coordinate={{ 
+                  latitude: Number(order.customer_latitude), 
+                  longitude: Number(order.customer_longitude) 
+                }}
+                title="Khách hàng"
+              >
+                <Ionicons name="person-circle" size={36} color="#E53E3E" />
+              </Marker>
+            )}
+
+            {/* Vẽ đường đi (nếu cần thiết) */}
+            {order?.customer_latitude && location && (
+              <MapViewDirections
+                origin={location.coords}
+                destination={{
+                  latitude: Number(order.customer_latitude),
+                  longitude: Number(order.customer_longitude),
+                }}
+                apikey="YOUR_GOOGLE_MAPS_API_KEY"
+                strokeWidth={5}
+                strokeColor="#3399FF"
+                mode="DRIVING"
+              />
+            )}
           </MapView>
         ) : (
           <View style={styles.loadingContainer}>
@@ -131,15 +163,15 @@ export default function ActiveRide() {
         
         <View style={styles.row}>
           <Ionicons name="person" size={20} color="#4A5568" />
-          <Text style={styles.label}>Khách hàng: Trần Thanh Khang</Text>
+          <Text style={styles.label}>Khách hàng: {order?.customer_name || 'Khách'}</Text>
         </View>
         <View style={styles.row}>
           <Ionicons name="location" size={20} color="#3182CE" />
-          <Text style={styles.label}>Đón: Landmark 81</Text>
+          <Text style={styles.label}>Đón: {order?.pickup_address || order?.restaurant_address || 'Đang cập nhật'}</Text>
         </View>
         <View style={styles.row}>
           <Ionicons name="flag" size={20} color="#E53E3E" />
-          <Text style={styles.label}>Trả: Chợ Bến Thành</Text>
+          <Text style={styles.label}>Trả: {order?.address || 'Đang cập nhật'}</Text>
         </View>
         
         <View style={styles.divider} />
@@ -147,19 +179,25 @@ export default function ActiveRide() {
         <View style={styles.actionRow}>
           <View style={styles.priceContainer}>
              <Text style={styles.priceLabel}>Thu tiền mặt:</Text>
-             <Text style={styles.priceValue}>35,000đ</Text>
+             <Text style={styles.priceValue}>{order ? parseFloat(order.total_amount).toLocaleString() : 0}đ</Text>
           </View>
           <TouchableOpacity 
             style={styles.chatBtn}
-            onPress={() => router.push(`/chat/${orderId}`)}
+            onPress={() => router.push(`/chat/${id}`)}
           >
             <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.completeBtn} onPress={handleComplete}>
-          <Text style={styles.btnText}>Hoàn Thành Cuốc</Text>
-        </TouchableOpacity>
+        {status === 'DRIVER_ASSIGNED' ? (
+          <TouchableOpacity style={styles.completeBtn} onPress={() => handleUpdateStatus('DELIVERING')}>
+            <Text style={styles.btnText}>Đã đón khách</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={[styles.completeBtn, { backgroundColor: '#38A169' }]} onPress={() => handleUpdateStatus('COMPLETED')}>
+            <Text style={styles.btnText}>Hoàn Thành Cuốc</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

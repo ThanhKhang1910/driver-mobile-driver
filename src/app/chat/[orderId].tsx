@@ -84,7 +84,7 @@ export default function ChatScreen() {
       chat_id: chatId,
       order_id: orderId,
       sender_id: user.id, // Or user.user_id depending on context
-      sender_type: 'CUSTOMER',
+      sender_type: 'DRIVER',
       message: newMessage.trim(),
     };
 
@@ -93,7 +93,7 @@ export default function ChatScreen() {
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isMe = item.sender_type === 'CUSTOMER';
+    const isMe = item.sender_type === 'DRIVER';
 
     return (
       <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
@@ -115,7 +115,7 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Tài xế</Text>
+          <Text style={styles.headerTitle}>Khách hàng</Text>
           <Text style={styles.headerSubtitle}>Mã đơn: {orderId}</Text>
         </View>
         <TouchableOpacity style={styles.callBtn}>
@@ -148,7 +148,7 @@ export default function ChatScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Nhắn tin cho tài xế..."
+            placeholder="Nhắn tin cho khách hàng..."
             value={newMessage}
             onChangeText={setNewMessage}
             onSubmitEditing={sendMessage}
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   },
   myMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: '#3399FF',
+    backgroundColor: '#38A169',
     borderBottomRightRadius: 4,
   },
   theirMessage: {
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#3399FF',
+    backgroundColor: '#38A169',
     justifyContent: 'center',
     alignItems: 'center',
   },
