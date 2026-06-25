@@ -7,7 +7,7 @@ import axiosClient from '@/api/axiosClient';
 import { connectSocket } from '@/api/socket';
 
 export default function DriverHome() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
@@ -46,13 +46,25 @@ export default function DriverHome() {
   };
 
   const handleToggleStatus = async (value: boolean) => {
-    setIsOnline(value);
     try {
+      // Always fetch latest user info to get the real-time status
+      const meRes = await axiosClient.get('/auth/me');
+      if (meRes.data) {
+        await refreshUser(meRes.data);
+      }
+      
+      const latestStatus = meRes.data?.status || user?.status;
+      if (latestStatus === 'PENDING') {
+        Alert.alert('Tài khoản chưa được duyệt', 'Vui lòng đợi Admin xác nhận tài khoản của bạn trước khi trực tuyến!');
+        return;
+      }
+
+      setIsOnline(value);
       await axiosClient.put('/driver/status', { isOnline: value });
     } catch (error) {
       console.log('Error updating status:', error);
       Alert.alert('Lỗi', 'Không thể cập nhật trạng thái');
-      setIsOnline(!value); // Revert
+      setIsOnline(false); // Revert
     }
   };
 
