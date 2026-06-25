@@ -8,6 +8,7 @@ import { connectSocket } from '@/api/socket';
 import { Audio } from 'expo-av';
 import { Vibration } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 
 export default function DriverHome() {
   const { user, logout, refreshUser } = useAuth();
@@ -15,6 +16,11 @@ export default function DriverHome() {
   const [isOnline, setIsOnline] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const alarmSoundRef = React.useRef<Audio.Sound | null>(null);
+
+  const [todayEarnings, setTodayEarnings] = useState(0);
+  const [countdown, setCountdown] = useState(15);
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const locationSubscription = React.useRef<Location.LocationSubscription | null>(null);
 
   const playAlarm = async () => {
     if (alarmSoundRef.current) return;
@@ -44,13 +50,68 @@ export default function DriverHome() {
   useEffect(() => {
     if (availableOrders.length > 0 && isOnline) {
       playAlarm();
+      setCountdown(15);
+      timerRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            setAvailableOrders([]); // Timeout
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
     } else {
       stopAlarm();
+      if (timerRef.current) clearInterval(timerRef.current);
     }
     return () => {
       stopAlarm();
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [availableOrders, isOnline]);
+
+  const fetchEarnings = async () => {
+    try {
+      const res = await axiosClient.get('/driver/earnings/today');
+      setTodayEarnings(res.data.earnings || 0);
+    } catch (e) {
+      console.log('Error fetching earnings', e);
+    }
+  };
+
+  useEffect(() => {
+    if (isOnline) {
+      (async () => {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          locationSubscription.current = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.High,
+              timeInterval: 10000,
+              distanceInterval: 10,
+            },
+            (newLocation) => {
+              axiosClient.put('/driver/location', {
+                lat: newLocation.coords.latitude,
+                lng: newLocation.coords.longitude
+              }).catch(e => console.log('Location update err:', e));
+            }
+          );
+        }
+      })();
+    } else {
+      if (locationSubscription.current) {
+        locationSubscription.current.remove();
+        locationSubscription.current = null;
+      }
+    }
+    return () => {
+      if (locationSubscription.current) {
+        locationSubscription.current.remove();
+      }
+    };
+  }, [isOnline]);
 
   useEffect(() => {
     AsyncStorage.getItem('isOnline').then(val => {
@@ -61,6 +122,7 @@ export default function DriverHome() {
 
     // Optionally fetch initial state if backend stores online status
     fetchAvailableOrders();
+    fetchEarnings();
 
     const socket = connectSocket();
     if (user) {
@@ -140,6 +202,11 @@ export default function DriverHome() {
         </TouchableOpacity>
       </View>
 
+      <View style={{ backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 10, padding: 16, borderRadius: 12, elevation: 2, alignItems: 'center' }}>
+        <Text style={{ fontSize: 14, color: '#718096', marginBottom: 4 }}>Doanh thu hôm nay</Text>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#38A169' }}>{todayEarnings.toLocaleString()} đ</Text>
+      </View>
+
       <View style={styles.statusCard}>
         <Text style={styles.statusText}>
           Trạng thái: <Text style={{ color: isOnline ? '#3399FF' : '#718096', fontWeight: 'bold' }}>{isOnline ? 'Đang trực tuyến' : 'Ngoại tuyến'}</Text>
@@ -167,7 +234,7 @@ export default function DriverHome() {
           {availableOrders.length > 0 && (
             <View style={{ marginTop: 20, marginBottom: 10, alignItems: 'center' }}>
               <View style={[styles.radarEffect, { marginTop: 0, marginBottom: 10, backgroundColor: '#E6FFFA', borderColor: '#B2F5EA' }]}>
-                 <Ionicons name="notifications" size={50} color="#38A169" />
+                 <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#38A169' }}>{countdown}</Text>
               </View>
               <Text style={[styles.waitingText, { color: '#38A169' }]}>Có cuốc xe mới!</Text>
             </View>

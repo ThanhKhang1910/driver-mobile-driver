@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
@@ -105,6 +105,29 @@ export default function ActiveRide() {
       Alert.alert('Lỗi', 'Không thể cập nhật trạng thái');
     }
   };
+  const handleCancel = () => {
+    Alert.alert('Hủy Chuyến', 'Bạn có chắc chắn muốn hủy chuyến xe này?', [
+      { text: 'Không', style: 'cancel' },
+      { text: 'Có', onPress: async () => {
+          try {
+            await axiosClient.put('/driver/orders/status', { orderId: id, status: 'CANCELLED' });
+            if (locationSubscription.current) locationSubscription.current.remove();
+            router.replace('/(driver)/home');
+          } catch (error) {
+            Alert.alert('Lỗi', 'Không thể hủy cuốc xe lúc này');
+          }
+      }, style: 'destructive' }
+    ]);
+  };
+
+  const openNavigation = () => {
+    if (order?.customer_latitude && order?.customer_longitude) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`;
+      Linking.openURL(url);
+    } else {
+      Alert.alert('Lỗi', 'Không tìm thấy tọa độ khách hàng');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -142,7 +165,7 @@ export default function ActiveRide() {
                   latitude: Number(order.customer_latitude),
                   longitude: Number(order.customer_longitude),
                 }}
-                apikey="YOUR_GOOGLE_MAPS_API_KEY"
+                apikey="YOUR_GOOGLE_MAPS_API_KEY_HERE"
                 strokeWidth={5}
                 strokeColor="#3399FF"
                 mode="DRIVING"
@@ -182,12 +205,24 @@ export default function ActiveRide() {
              <Text style={styles.priceValue}>{order ? parseFloat(order.total_amount).toLocaleString() : 0}đ</Text>
           </View>
           <TouchableOpacity 
+            style={[styles.chatBtn, { backgroundColor: '#3182CE', marginRight: 10 }]}
+            onPress={openNavigation}
+          >
+            <Ionicons name="map-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={styles.chatBtn}
             onPress={() => router.push(`/chat/${id}`)}
           >
             <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
           </TouchableOpacity>
         </View>
+
+        {status === 'DRIVER_ASSIGNED' && (
+          <TouchableOpacity style={[styles.completeBtn, { backgroundColor: '#FC8181', marginBottom: 10 }]} onPress={handleCancel}>
+            <Text style={styles.btnText}>Hủy Chuyến</Text>
+          </TouchableOpacity>
+        )}
 
         {status === 'DRIVER_ASSIGNED' ? (
           <TouchableOpacity style={styles.completeBtn} onPress={() => handleUpdateStatus('DELIVERING')}>
