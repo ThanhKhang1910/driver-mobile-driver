@@ -157,15 +157,19 @@ export default function ActiveRide() {
               </Marker>
             )}
 
-            {/* Vẽ đường đi (nếu cần thiết) */}
-            {order?.customer_latitude && location && (
+            {/* Vẽ đường đi */}
+            {order && location && (
               <MapViewDirections
                 origin={location.coords}
                 destination={{
-                  latitude: Number(order.customer_latitude),
-                  longitude: Number(order.customer_longitude),
+                  latitude: status === 'DRIVER_ASSIGNED' 
+                    ? Number(order.service_type === 'FOOD' ? order.restaurant_lat : order.pickup_latitude)
+                    : Number(order.customer_latitude),
+                  longitude: status === 'DRIVER_ASSIGNED'
+                    ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
+                    : Number(order.customer_longitude),
                 }}
-                apikey="YOUR_GOOGLE_MAPS_API_KEY_HERE"
+                apikey="AIzaSyBuwC3ecBiFH3D6BzwXp_dNuTpLhweI6sU"
                 strokeWidth={5}
                 strokeColor="#3399FF"
                 mode="DRIVING"
@@ -226,11 +230,15 @@ export default function ActiveRide() {
 
         {status === 'DRIVER_ASSIGNED' ? (
           <TouchableOpacity style={styles.completeBtn} onPress={() => handleUpdateStatus('DELIVERING')}>
-            <Text style={styles.btnText}>Đã đón khách</Text>
+            <Text style={styles.btnText}>
+              {order?.service_type === 'BIKE' ? 'Đã đón khách' : 'Đã lấy đồ ăn (Bắt đầu giao)'}
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={[styles.completeBtn, { backgroundColor: '#38A169' }]} onPress={() => handleUpdateStatus('COMPLETED')}>
-            <Text style={styles.btnText}>Hoàn Thành Cuốc</Text>
+            <Text style={styles.btnText}>
+              {order?.service_type === 'BIKE' ? 'Hoàn Thành Cuốc' : 'Giao Hàng Thành Công'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
