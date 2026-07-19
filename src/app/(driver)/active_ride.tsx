@@ -19,6 +19,7 @@ export default function ActiveRide() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     if (id) fetchOrderDetails();
@@ -30,6 +31,27 @@ export default function ActiveRide() {
       if (locationSubscription.current) locationSubscription.current.remove();
     };
   }, [id]);
+
+  useEffect(() => {
+    if (order && location && mapRef.current) {
+      const destLat = status === 'DRIVER_ASSIGNED' 
+        ? Number(order.service_type === 'FOOD' ? order.restaurant_lat : order.pickup_latitude)
+        : Number(order.customer_latitude);
+      const destLng = status === 'DRIVER_ASSIGNED'
+        ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
+        : Number(order.customer_longitude);
+
+      if (destLat && destLng) {
+        mapRef.current.fitToCoordinates([
+          { latitude: location.coords.latitude, longitude: location.coords.longitude },
+          { latitude: destLat, longitude: destLng }
+        ], {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
+      }
+    }
+  }, [order, location, status]);
 
   const fetchOrderDetails = async () => {
     try {
@@ -121,11 +143,20 @@ export default function ActiveRide() {
   };
 
   const openNavigation = () => {
-    if (order?.customer_latitude && order?.customer_longitude) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${order.customer_latitude},${order.customer_longitude}`;
+    let destLat, destLng;
+    if (status === 'DRIVER_ASSIGNED') {
+      destLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
+      destLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
+    } else {
+      destLat = order?.customer_latitude;
+      destLng = order?.customer_longitude;
+    }
+
+    if (destLat && destLng) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
       Linking.openURL(url);
     } else {
-      Alert.alert('Lỗi', 'Không tìm thấy tọa độ khách hàng');
+      Alert.alert('Lỗi', 'Không tìm thấy tọa độ điểm đến');
     }
   };
 
@@ -134,6 +165,7 @@ export default function ActiveRide() {
       <View style={styles.mapArea}>
         {location ? (
           <MapView
+            ref={mapRef}
             style={styles.map}
             initialRegion={{
               latitude: location.coords.latitude,
@@ -142,7 +174,7 @@ export default function ActiveRide() {
               longitudeDelta: 0.01,
             }}
             showsUserLocation={true}
-            followsUserLocation={true}
+            followsUserLocation={false}
           >
             {/* Vị trí của khách hàng */}
             {order?.customer_latitude && order?.customer_longitude && (
@@ -157,6 +189,26 @@ export default function ActiveRide() {
               </Marker>
             )}
 
+            {/* Vị trí Quán ăn / Điểm lấy hàng */}
+            {(() => {
+              const pLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
+              const pLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
+              if (pLat && pLng) {
+                return (
+                  <Marker
+                    coordinate={{ 
+                      latitude: Number(pLat), 
+                      longitude: Number(pLng) 
+                    }}
+                    title={order?.service_type === 'FOOD' ? "Quán ăn" : "Điểm lấy hàng"}
+                  >
+                    <Ionicons name={order?.service_type === 'FOOD' ? "restaurant" : "cube"} size={32} color="#3182CE" />
+                  </Marker>
+                );
+              }
+              return null;
+            })()}
+
             {/* Vẽ đường đi */}
             {order && location && (
               <MapViewDirections
@@ -169,7 +221,7 @@ export default function ActiveRide() {
                     ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
                     : Number(order.customer_longitude),
                 }}
-                apikey="YOUR_GOOGLE_MAPS_API_KEY"
+                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY as string}
                 strokeWidth={5}
                 strokeColor="#3399FF"
                 mode="DRIVING"

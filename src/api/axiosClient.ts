@@ -2,10 +2,17 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 
+import { Platform } from 'react-native';
+
 // Lấy IP của máy tính đang chạy Expo Dev Server để kết nối từ thiết bị thật hoặc máy ảo
 const getBaseURL = () => {
   const hostUri = Constants.expoConfig?.hostUri;
-  const localhost = hostUri ? hostUri.split(':')[0] : 'localhost';
+  let localhost = hostUri ? hostUri.split(':')[0] : 'localhost';
+  
+  // Sửa lỗi Android Emulator không nhận localhost
+  if (Platform.OS === 'android' && (localhost === 'localhost' || localhost === '127.0.0.1')) {
+    localhost = '10.0.2.2';
+  }
   
   // Bạn có thể chỉnh sửa cổng (port) ở đây nếu backend đổi cổng
   return `http://${localhost}:5005/api/v1`;
