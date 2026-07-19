@@ -10,7 +10,7 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
       }
     },
     "android": {
@@ -23,7 +23,7 @@
       "predictiveBackGestureEnabled": false,
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY_HERE"
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
         }
       }
     },

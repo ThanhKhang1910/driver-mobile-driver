@@ -169,7 +169,7 @@ export default function ActiveRide() {
                     ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
                     : Number(order.customer_longitude),
                 }}
-                apikey="AIzaSyBuwC3ecBiFH3D6BzwXp_dNuTpLhweI6sU"
+                apikey="YOUR_GOOGLE_MAPS_API_KEY"
                 strokeWidth={5}
                 strokeColor="#3399FF"
                 mode="DRIVING"
