@@ -2,9 +2,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
+import * as SecureStore from 'expo-secure-store';
+import { BACKGROUND_LOCATION_TASK } from '@/tasks/backgroundLocation';
 import { io, Socket } from 'socket.io-client';
 import axiosClient, { getBaseURL } from '@/api/axiosClient';
 import { useAuth } from '@/context/AuthContext';
@@ -72,29 +74,53 @@ export default function ActiveRide() {
       // Có thể emit 'driver_online' ở đây
     });
   };
-
   const startTracking = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
+    let { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+    if (fgStatus !== 'granted') {
       setErrorMsg('Quyền truy cập vị trí bị từ chối');
       return;
+    }
+
+    let { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+    if (bgStatus !== 'granted') {
+      console.warn('Quyền vị trí ngầm bị từ chối - App sẽ không thể cập nhật GPS khi tắt màn hình');
     }
 
     // Lấy vị trí ban đầu
     let initialLocation = await Location.getCurrentPositionAsync({});
     setLocation(initialLocation);
 
-    // Bắt đầu theo dõi liên tục
+    // Lưu order_id cho Background Task
+    if (id) {
+      await SecureStore.setItemAsync('active_order_id', String(id));
+    }
+
+    // Bắt đầu theo dõi ngầm (Background)
+    if (bgStatus === 'granted') {
+      await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000,
+        distanceInterval: 5,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Đang theo dõi chuyến đi',
+          notificationBody: 'Vị trí của bạn đang được chia sẻ với khách hàng',
+          notificationColor: '#3399FF',
+        }
+      });
+    }
+
+    // Vẫn giữ Watcher cho giao diện UI
     locationSubscription.current = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High,
-        timeInterval: 3000, // Cập nhật mỗi 3 giây
-        distanceInterval: 5, // Hoặc mỗi 5 mét
+        timeInterval: 3000,
+        distanceInterval: 5,
       },
       (newLocation) => {
         setLocation(newLocation);
         
-        // Phát tọa độ lên Server
+        // Tùy chọn: Vẫn phát qua Socket nếu đang mở màn hình để mượt hơn
         if (socketRef.current && id) {
           socketRef.current.emit('update_location', {
             order_id: id,
@@ -107,6 +133,17 @@ export default function ActiveRide() {
     );
   };
 
+  const stopTracking = async () => {
+    if (locationSubscription.current) {
+      locationSubscription.current.remove();
+    }
+    const hasStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+    if (hasStarted) {
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+    }
+    await SecureStore.deleteItemAsync('active_order_id');
+  };
+
   const handleUpdateStatus = async (newStatus: string) => {
     try {
       await axiosClient.put('/driver/orders/status', { orderId: id, status: newStatus });
@@ -115,8 +152,8 @@ export default function ActiveRide() {
         Alert.alert('Thành công', 'Đã hoàn thành cuốc xe!', [
           { 
             text: 'OK', 
-            onPress: () => {
-              if (locationSubscription.current) locationSubscription.current.remove();
+            onPress: async () => {
+              await stopTracking();
               router.replace('/(driver)/home');
             } 
           }
@@ -133,7 +170,7 @@ export default function ActiveRide() {
       { text: 'Có', onPress: async () => {
           try {
             await axiosClient.put('/driver/orders/status', { orderId: id, status: 'CANCELLED' });
-            if (locationSubscription.current) locationSubscription.current.remove();
+            await stopTracking();
             router.replace('/(driver)/home');
           } catch (error) {
             Alert.alert('Lỗi', 'Không thể hủy cuốc xe lúc này');

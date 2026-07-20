@@ -2,6 +2,9 @@ import { Stack } from 'expo-router';
 import { LogBox } from 'react-native';
 
 LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+
+// Đăng ký TaskManager ở Global Scope
+import '@/tasks/backgroundLocation';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { StatusBar } from 'expo-status-bar';

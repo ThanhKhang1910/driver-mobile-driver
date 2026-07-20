@@ -11,6 +11,9 @@
       "icon": "./assets/expo.icon",
       "config": {
         "googleMapsApiKey": "[YOUR_GOOGLE_MAPS_API_KEY]"
+      },
+      "infoPlist": {
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -25,7 +28,14 @@
         "googleMaps": {
           "apiKey": "[YOUR_GOOGLE_MAPS_API_KEY]"
         }
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -55,7 +65,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Cho phép ứng dụng sử dụng vị trí của bạn để giao đồ ăn."
+          "locationAlwaysAndWhenInUsePermission": "Cho phép ứng dụng sử dụng vị trí của bạn để giao đồ ăn.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
       ]
     ],
