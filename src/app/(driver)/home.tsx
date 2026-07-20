@@ -19,7 +19,7 @@ export default function DriverHome() {
 
   const [todayEarnings, setTodayEarnings] = useState(0);
   const [countdown, setCountdown] = useState(15);
-  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const timerRef = React.useRef<any>(null);
   const locationSubscription = React.useRef<Location.LocationSubscription | null>(null);
 
   const playAlarm = async () => {

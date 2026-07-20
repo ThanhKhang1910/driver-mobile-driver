@@ -87,7 +87,7 @@ export default function ProfileScreen() {
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.actionBlock} onPress={() => router.push('/(tabs)/activity')}>
+          <TouchableOpacity style={styles.actionBlock} onPress={() => router.push('/(tabs)/activity' as any)}>
             <Ionicons name="receipt-outline" size={24} color="#0F172A" />
             <Text style={styles.actionBlockText}>Đơn hàng</Text>
           </TouchableOpacity>

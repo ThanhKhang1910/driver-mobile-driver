@@ -196,7 +196,7 @@ export default function CheckoutScreen() {
         </View>
         <Text style={styles.emptyTitle}>Giỏ hàng đang trống</Text>
         <Text style={styles.emptySubtitle}>Hãy chọn món ngon để bắt đầu!</Text>
-        <TouchableOpacity style={styles.backHomeButton} onPress={() => router.replace('/(tabs)')}>
+        <TouchableOpacity style={styles.backHomeButton} onPress={() => router.replace('/(tabs)' as any)}>
           <Text style={styles.backHomeText}>Quay lại trang chủ</Text>
           <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
         </TouchableOpacity>

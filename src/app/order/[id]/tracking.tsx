@@ -153,7 +153,7 @@ export default function OrderTrackingScreen() {
       {
         text: 'Về trang chủ',
         onPress: () => {
-          router.replace('/(tabs)');
+          router.replace('/(tabs)' as any);
         },
       },
     ]);
@@ -303,7 +303,7 @@ export default function OrderTrackingScreen() {
             <Text style={styles.submitReviewBtnText}>Gửi đánh giá</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.backHomeLink} onPress={() => router.replace('/(tabs)')}>
+          <TouchableOpacity style={styles.backHomeLink} onPress={() => router.replace('/(tabs)' as any)}>
             <Text style={styles.backHomeLinkText}>Để sau, về trang chủ</Text>
           </TouchableOpacity>
         </ScrollView>
