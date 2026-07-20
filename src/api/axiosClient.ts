@@ -7,11 +7,13 @@ import { Platform } from 'react-native';
 // Lấy IP của máy tính đang chạy Expo Dev Server để kết nối từ thiết bị thật hoặc máy ảo
 const getBaseURL = () => {
   const hostUri = Constants.expoConfig?.hostUri;
-  let localhost = hostUri ? hostUri.split(':')[0] : 'localhost';
+  let localhost = hostUri ? hostUri.split(':')[0] : '192.168.0.105';
   
   // Sửa lỗi Android Emulator không nhận localhost
   if (Platform.OS === 'android' && (localhost === 'localhost' || localhost === '127.0.0.1')) {
     localhost = '10.0.2.2';
+  } else if (localhost === 'localhost' || localhost === '127.0.0.1') {
+    localhost = '192.168.0.105'; // Ép dùng IP máy tính nếu là điện thoại thật
   }
   
   // Bạn có thể chỉnh sửa cổng (port) ở đây nếu backend đổi cổng
