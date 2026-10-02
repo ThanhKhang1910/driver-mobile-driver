@@ -13,7 +13,10 @@
         "googleMapsApiKey": "[YOUR_GOOGLE_MAPS_API_KEY]"
       },
       "infoPlist": {
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": ["location"],
+        "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để nhận cuốc xe.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí nền để cập nhật vị trí cho khách hàng.",
+        "NSLocationAlwaysUsageDescription": "Ứng dụng cần quyền truy cập vị trí nền để cập nhật vị trí cho khách hàng."
       }
     },
     "android": {

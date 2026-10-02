@@ -40,5 +40,28 @@ axiosClient.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Interceptor xử lý lỗi từ response (ví dụ: 401 JWT expired)
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+axiosClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      console.log('Token expired or unauthorized, logging out...');
+      // Xóa cache cũ
+      await SecureStore.deleteItemAsync('token');
+      await SecureStore.deleteItemAsync('user');
+      await AsyncStorage.removeItem('isOnline');
+      
+      // Đẩy về trang đăng nhập
+      if (router) {
+        router.replace('/(auth)/login');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosClient;
 export { getBaseURL };
