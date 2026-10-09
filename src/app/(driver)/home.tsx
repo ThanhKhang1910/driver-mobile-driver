@@ -202,9 +202,48 @@ export default function DriverHome() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 10, padding: 16, borderRadius: 12, elevation: 2, alignItems: 'center' }}>
-        <Text style={{ fontSize: 14, color: '#718096', marginBottom: 4 }}>Doanh thu hôm nay</Text>
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#38A169' }}>{todayEarnings.toLocaleString()} đ</Text>
+      <TouchableOpacity 
+        style={{ backgroundColor: '#FFF', marginHorizontal: 20, marginTop: 10, padding: 16, borderRadius: 12, elevation: 2, alignItems: 'center' }}
+        onPress={() => router.push('/(driver)/earnings' as any)}
+        activeOpacity={0.85}
+      >
+        <Text style={{ fontSize: 13, color: '#718096', marginBottom: 4 }}>Doanh thu hôm nay (Chạm để xem chi tiết ví)</Text>
+        <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#38A169' }}>{todayEarnings.toLocaleString()} đ</Text>
+      </TouchableOpacity>
+
+      {/* Driver Quick Navigation Grid */}
+      <View style={{ flexDirection: 'row', marginHorizontal: 20, marginTop: 10, gap: 8 }}>
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}
+          onPress={() => router.push('/(driver)/earnings' as any)}
+        >
+          <Ionicons name="wallet-outline" size={20} color="#10B981" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginTop: 4 }}>Ví & Thu nhập</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}
+          onPress={() => router.push('/(driver)/history' as any)}
+        >
+          <Ionicons name="time-outline" size={20} color="#3B82F6" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginTop: 4 }}>Lịch sử cuốc</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}
+          onPress={() => router.push('/(driver)/reviews' as any)}
+        >
+          <Ionicons name="star-outline" size={20} color="#F59E0B" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginTop: 4 }}>Đánh giá</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 12, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' }}
+          onPress={() => router.push('/profile')}
+        >
+          <Ionicons name="person-outline" size={20} color="#6366F1" />
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#475569', marginTop: 4 }}>Hồ sơ</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.statusCard}>
@@ -251,7 +290,15 @@ export default function DriverHome() {
               >
                 <View style={styles.orderHeader}>
                   <Text style={styles.orderType}>
-                    {order.service_type === 'BIKE' ? 'Chở khách (Bike)' : order.service_type === 'CAR' ? 'Chở khách (Car)' : 'Giao đồ ăn'}
+                    {order.service_type === 'BIKE'
+                      ? '🛵 Chở khách (Bike)'
+                      : order.service_type === 'CAR' || order.service_type === 'CAR_4'
+                      ? '🚘 Chở khách (Car 4 chỗ)'
+                      : order.service_type === 'CAR_7'
+                      ? '🚐 Chở khách (Car 7 chỗ)'
+                      : order.service_type === 'DELIVERY'
+                      ? '📦 Giao bưu phẩm'
+                      : '🍔 Giao đồ ăn'}
                   </Text>
                   <Text style={styles.orderPrice}>{parseFloat(order.total_amount).toLocaleString()}đ</Text>
                 </View>
