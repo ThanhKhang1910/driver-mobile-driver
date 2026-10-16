@@ -1,20 +1,25 @@
 import { io, Socket } from 'socket.io-client';
-import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
+import { getBaseURL } from './axiosClient';
 
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    const hostUri = Constants.expoConfig?.hostUri;
-    const localhost = hostUri ? hostUri.split(':')[0] : 'localhost';
+    const socketUrl = getBaseURL().replace('/api/v1', '');
     
-    // Kết nối đến port 5005 của backend
-    const socketUrl = `http://${localhost}:5005`;
-    
-    console.log(`[Socket] Connecting to ${socketUrl}...`);
+    console.log(`[Driver Socket] Connecting to ${socketUrl}...`);
     socket = io(socketUrl, {
-      transports: ['websocket'],
+      transports: ['polling', 'websocket'],
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      auth: (cb) => {
+        SecureStore.getItemAsync('token')
+          .then((token) => cb({ token: token || '' }))
+          .catch(() => cb({ token: '' }));
+      },
     });
   }
   return socket;
@@ -22,9 +27,18 @@ export const getSocket = (): Socket => {
 
 export const connectSocket = () => {
   const s = getSocket();
-  if (!s.connected) {
-    s.connect();
-  }
+  SecureStore.getItemAsync('token').then((token) => {
+    if (token) {
+      s.auth = { token };
+    }
+    if (!s.connected) {
+      s.connect();
+    }
+  }).catch(() => {
+    if (!s.connected) {
+      s.connect();
+    }
+  });
   return s;
 };
 

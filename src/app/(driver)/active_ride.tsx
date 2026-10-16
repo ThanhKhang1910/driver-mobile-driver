@@ -1,17 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, Polyline } from 'react-native-maps';
-import MapViewDirections from 'react-native-maps-directions';
+import GoongMapView, { GoongMapViewRef, GoongMarker } from '@/components/GoongMapView';
 import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
-import { BACKGROUND_LOCATION_TASK } from '@/tasks/backgroundLocation';
-import { io, Socket } from 'socket.io-client';
-import axiosClient, { getBaseURL } from '@/api/axiosClient';
+import { Socket } from 'socket.io-client';
+import axiosClient from '@/api/axiosClient';
+import { connectSocket } from '@/api/socket';
 import { useAuth } from '@/context/AuthContext';
 
 export default function ActiveRide() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
@@ -21,7 +22,7 @@ export default function ActiveRide() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const locationSubscription = useRef<Location.LocationSubscription | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<GoongMapViewRef | null>(null);
 
   useEffect(() => {
     if (id) fetchOrderDetails();
@@ -66,82 +67,104 @@ export default function ActiveRide() {
   };
 
   const setupSocket = () => {
-    const socket = io(getBaseURL().replace('/api/v1', ''));
+    const socket = connectSocket();
     socketRef.current = socket;
     
-    socket.on('connect', () => {
-      console.log('Driver connected to Socket:', socket.id);
-      // Có thể emit 'driver_online' ở đây
-    });
+    const joinOrder = () => {
+      if (id) {
+        socket.emit('join_order', id);
+        console.log('[ActiveRide] Driver joined order room:', id);
+      }
+    };
+
+    if (socket.connected) {
+      joinOrder();
+    }
+    socket.on('connect', joinOrder);
   };
+
   const startTracking = async () => {
-    let { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') {
-      setErrorMsg('Quyền truy cập vị trí bị từ chối');
-      return;
+    try {
+      const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
+      if (fgStatus !== 'granted') {
+        setErrorMsg('Quyền truy cập vị trí bị từ chối');
+      }
+    } catch (e) {
+      console.warn('Location foreground permission error:', e);
     }
 
-    let { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
-    if (bgStatus !== 'granted') {
-      console.warn('Quyền vị trí ngầm bị từ chối - App sẽ không thể cập nhật GPS khi tắt màn hình');
-    }
-
-    // Lấy vị trí ban đầu
-    let initialLocation = await Location.getCurrentPositionAsync({});
-    setLocation(initialLocation);
-
-    // Lưu order_id cho Background Task
-    if (id) {
-      await SecureStore.setItemAsync('active_order_id', String(id));
-    }
-
-    // Bắt đầu theo dõi ngầm (Background)
-    if (bgStatus === 'granted') {
-      await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 5000,
-        distanceInterval: 5,
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'Đang theo dõi chuyến đi',
-          notificationBody: 'Vị trí của bạn đang được chia sẻ với khách hàng',
-          notificationColor: '#3399FF',
-        }
+    // Lấy vị trí ban đầu (nhanh và an toàn)
+    try {
+      let initialLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
       });
-    }
+      setLocation(initialLocation);
 
-    // Vẫn giữ Watcher cho giao diện UI
-    locationSubscription.current = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.High,
-        timeInterval: 3000,
-        distanceInterval: 5,
-      },
-      (newLocation) => {
-        setLocation(newLocation);
-        
-        // Tùy chọn: Vẫn phát qua Socket nếu đang mở màn hình để mượt hơn
-        if (socketRef.current && id) {
+      // Emit and save immediately
+      if (initialLocation && id) {
+        if (socketRef.current) {
           socketRef.current.emit('update_location', {
-            order_id: id,
-            latitude: newLocation.coords.latitude,
-            longitude: newLocation.coords.longitude,
-            heading: newLocation.coords.heading,
+            order_id: Number(id),
+            latitude: initialLocation.coords.latitude,
+            longitude: initialLocation.coords.longitude,
+            heading: initialLocation.coords.heading || 0,
           });
         }
+        axiosClient.put('/driver/location', {
+          lat: initialLocation.coords.latitude,
+          lng: initialLocation.coords.longitude,
+          order_id: Number(id),
+        }).catch(() => {});
       }
-    );
+    } catch (locErr) {
+      console.warn('Could not get initial position:', locErr);
+      try {
+        const last = await Location.getLastKnownPositionAsync();
+        if (last) setLocation(last);
+      } catch (e) {}
+    }
+
+    // Theo dõi vị trí trực tiếp cho UI và socket
+    try {
+      locationSubscription.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 3000,
+          distanceInterval: 5,
+        },
+        (newLocation) => {
+          setLocation(newLocation);
+          
+          if (id) {
+            if (socketRef.current) {
+              socketRef.current.emit('update_location', {
+                order_id: Number(id),
+                latitude: newLocation.coords.latitude,
+                longitude: newLocation.coords.longitude,
+                heading: newLocation.coords.heading || 0,
+              });
+            }
+            axiosClient.put('/driver/location', {
+              lat: newLocation.coords.latitude,
+              lng: newLocation.coords.longitude,
+              order_id: Number(id),
+            }).catch(() => {});
+          }
+        }
+      );
+    } catch (watchErr) {
+      console.warn('watchPositionAsync error:', watchErr);
+    }
   };
 
   const stopTracking = async () => {
     if (locationSubscription.current) {
       locationSubscription.current.remove();
+      locationSubscription.current = null;
     }
-    const hasStarted = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-    if (hasStarted) {
-      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-    }
-    await SecureStore.deleteItemAsync('active_order_id');
+    try {
+      await SecureStore.deleteItemAsync('active_order_id');
+    } catch (e) {}
   };
 
   const handleUpdateStatus = async (newStatus: string) => {
@@ -197,84 +220,89 @@ export default function ActiveRide() {
     }
   };
 
+  const currentLatitude = location?.coords?.latitude || Number(order?.pickup_latitude) || 10.8429;
+  const currentLongitude = location?.coords?.longitude || Number(order?.pickup_longitude) || 106.7826;
+
   return (
     <View style={styles.container}>
       <View style={styles.mapArea}>
-        {location ? (
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={{
+        {(() => {
+          const markers: GoongMarker[] = [];
+          if (location?.coords) {
+            markers.push({
+              id: 'driver',
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            showsUserLocation={true}
-            followsUserLocation={false}
-          >
-            {/* Vị trí của khách hàng */}
-            {order?.customer_latitude && order?.customer_longitude && (
-              <Marker
-                coordinate={{ 
-                  latitude: Number(order.customer_latitude), 
-                  longitude: Number(order.customer_longitude) 
-                }}
-                title="Khách hàng"
-              >
-                <Ionicons name="person-circle" size={36} color="#E53E3E" />
-              </Marker>
-            )}
+              title: 'Vị trí của bạn',
+              icon: '🛵',
+              color: '#3182CE',
+            });
+          }
+          if (order?.customer_latitude && order?.customer_longitude) {
+            markers.push({
+              id: 'customer',
+              latitude: Number(order.customer_latitude),
+              longitude: Number(order.customer_longitude),
+              title: 'Khách hàng',
+              icon: '👤',
+              color: '#E53E3E',
+            });
+          }
+          const pLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
+          const pLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
+          if (pLat && pLng) {
+            markers.push({
+              id: 'pickup_restaurant',
+              latitude: Number(pLat),
+              longitude: Number(pLng),
+              title: order?.service_type === 'FOOD' ? 'Quán ăn' : 'Điểm đón',
+              icon: order?.service_type === 'FOOD' ? '🍔' : '📍',
+              color: '#38A169',
+            });
+          }
 
-            {/* Vị trí Quán ăn / Điểm lấy hàng */}
-            {(() => {
-              const pLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
-              const pLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
-              if (pLat && pLng) {
-                return (
-                  <Marker
-                    coordinate={{ 
-                      latitude: Number(pLat), 
-                      longitude: Number(pLng) 
-                    }}
-                    title={order?.service_type === 'FOOD' ? "Quán ăn" : "Điểm lấy hàng"}
-                  >
-                    <Ionicons name={order?.service_type === 'FOOD' ? "restaurant" : "cube"} size={32} color="#3182CE" />
-                  </Marker>
-                );
-              }
-              return null;
-            })()}
-
-            {/* Vẽ đường đi */}
-            {order && location && (
-              <MapViewDirections
-                origin={location.coords}
-                destination={{
-                  latitude: status === 'DRIVER_ASSIGNED' 
+          const destCoords = order
+            ? {
+                latitude:
+                  status === 'DRIVER_ASSIGNED'
                     ? Number(order.service_type === 'FOOD' ? order.restaurant_lat : order.pickup_latitude)
                     : Number(order.customer_latitude),
-                  longitude: status === 'DRIVER_ASSIGNED'
+                longitude:
+                  status === 'DRIVER_ASSIGNED'
                     ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
                     : Number(order.customer_longitude),
-                }}
-                apikey={process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY as string}
-                strokeWidth={5}
-                strokeColor="#3399FF"
-                mode="DRIVING"
-              />
-            )}
-          </MapView>
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3399FF" />
-            <Text style={styles.loadingText}>Đang lấy vị trí GPS...</Text>
-            {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
-          </View>
-        )}
+              }
+            : null;
+
+          return (
+            <GoongMapView
+              ref={mapRef}
+              style={styles.map}
+              initialCenter={{
+                latitude: currentLatitude,
+                longitude: currentLongitude,
+              }}
+              markers={markers}
+              origin={location?.coords || { latitude: currentLatitude, longitude: currentLongitude }}
+              destination={destCoords}
+              vehicle="bike"
+              routeColor="#3399FF"
+              routeWidth={5}
+            />
+          );
+        })()}
+
+        {/* Floating Back Button */}
+        <TouchableOpacity 
+          style={[styles.floatingBackBtn, { top: Math.max(insets.top, 50) + 10 }]}
+          onPress={() => router.replace('/(driver)/home')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-back" size={22} color="#1A202C" />
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.infoCard}>
+      <View style={[styles.infoCard, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
         <Text style={styles.title}>Chuyến xe hiện tại</Text>
         
         <View style={styles.row}>
@@ -434,5 +462,21 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: 'bold',
-  }
+  },
+  floatingBackBtn: {
+    position: 'absolute',
+    left: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 99,
+  },
 });

@@ -9,9 +9,6 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "config": {
-        "googleMapsApiKey": "[YOUR_GOOGLE_MAPS_API_KEY]"
-      },
       "infoPlist": {
         "UIBackgroundModes": ["location"],
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền truy cập vị trí để nhận cuốc xe.",
@@ -27,11 +24,6 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "config": {
-        "googleMaps": {
-          "apiKey": "[YOUR_GOOGLE_MAPS_API_KEY]"
-        }
-      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",

@@ -184,7 +184,7 @@ export default function DriverEarningsScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.policyTitle}>Chính sách chia sẻ doanh thu</Text>
                 <Text style={styles.policyText}>
-                  Tài xế thực nhận 80% cước phí chuyến xe. Phí nền tảng BronAuto là 20% (đã bao gồm bảo hiểm chuyến đi).
+                  Tài xế thực nhận 80% cước phí chuyến xe. Phí nền tảng NKGO là 20% (đã bao gồm bảo hiểm chuyến đi).
                 </Text>
               </View>
             </View>
@@ -205,7 +205,7 @@ export default function DriverEarningsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyTitle}>Nhận cước chuyến xe #Hoàn tất</Text>
-                <Text style={styles.historyDate}>Hôm nay • BronAuto Car/Bike</Text>
+                <Text style={styles.historyDate}>Hôm nay • NKGO Car/Bike</Text>
               </View>
               <Text style={styles.historyAmountPlus}>+{(data?.today || 35000).toLocaleString()}đ</Text>
             </View>

@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axiosClient from '@/api/axiosClient';
@@ -106,7 +106,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.premiumBannerGrab}>
             <View style={styles.premiumLeft}>
               <Text style={styles.premiumTitle}>Premium</Text>
-              <Text style={styles.premiumSub}>Thành viên cao cấp BronAuto</Text>
+              <Text style={styles.premiumSub}>Thành viên cao cấp NKGO</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#3399FF" />
           </TouchableOpacity>
@@ -147,7 +147,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
         
-        <Text style={styles.versionText}>BronAuto v1.0.0</Text>
+        <Text style={styles.versionText}>NKGO v1.0.0</Text>
 
       </ScrollView>
     </SafeAreaView>

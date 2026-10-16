@@ -4,20 +4,20 @@ import Constants from 'expo-constants';
 
 import { Platform } from 'react-native';
 
-// Lấy IP của máy tính đang chạy Expo Dev Server để kết nối từ thiết bị thật hoặc máy ảo
+// IP máy tính chạy backend — cập nhật khi đổi mạng Wi-Fi
+const BACKEND_IP = '192.168.0.103';
+
 const getBaseURL = () => {
-  const hostUri = Constants.expoConfig?.hostUri;
-  let localhost = hostUri ? hostUri.split(':')[0] : '192.168.0.105';
-  
-  // Sửa lỗi Android Emulator không nhận localhost
-  if (Platform.OS === 'android' && (localhost === 'localhost' || localhost === '127.0.0.1')) {
-    localhost = '10.0.2.2';
-  } else if (localhost === 'localhost' || localhost === '127.0.0.1') {
-    localhost = '192.168.0.105'; // Ép dùng IP máy tính nếu là điện thoại thật
+  // Android Emulator dùng địa chỉ đặc biệt 10.0.2.2 thay vì localhost
+  if (Platform.OS === 'android') {
+    const hostUri = Constants.expoConfig?.hostUri;
+    const host = hostUri ? hostUri.split(':')[0] : BACKEND_IP;
+    const ip = (host === 'localhost' || host === '127.0.0.1') ? '10.0.2.2' : BACKEND_IP;
+    return `http://${ip}:5005/api/v1`;
   }
-  
-  // Bạn có thể chỉnh sửa cổng (port) ở đây nếu backend đổi cổng
-  return `http://${localhost}:5005/api/v1`;
+
+  // iOS (điện thoại thật hoặc tunnel) — luôn dùng IP máy tính trực tiếp
+  return `http://${BACKEND_IP}:5005/api/v1`;
 };
 
 const axiosClient = axios.create({

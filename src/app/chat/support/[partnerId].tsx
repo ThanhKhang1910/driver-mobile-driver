@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { io, Socket } from 'socket.io-client';
+import * as SecureStore from 'expo-secure-store';
 import axiosClient, { getBaseURL } from '@/api/axiosClient';
 import { useAuth } from '@/context/AuthContext';
 
@@ -66,7 +67,13 @@ export default function SupportChatScreen() {
   };
 
   const setupSocket = (currentChatId: number) => {
-    const socket = io(getBaseURL().replace('/api/v1', ''));
+    const socket = io(getBaseURL().replace('/api/v1', ''), {
+      auth: (cb) => {
+        SecureStore.getItemAsync('token')
+          .then((token) => cb({ token: token || '' }))
+          .catch(() => cb({ token: '' }));
+      },
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
