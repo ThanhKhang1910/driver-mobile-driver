@@ -186,38 +186,151 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: #FFFFFF;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
-      border: 3px solid #38A169;
-      font-size: 18px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(0,0,0,0.06);
+      border: 3.5px solid #10B981;
+      font-size: 20px;
       cursor: pointer;
       transition: transform 0.2s ease;
+      z-index: 20;
+    }
+    .custom-marker:active {
+      transform: scale(0.92);
+    }
+    .pickup-marker {
+      border-color: #10B981 !important;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25), 0 4px 14px rgba(0,0,0,0.3) !important;
+    }
+    .dest-marker {
+      border-color: #EF4444 !important;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25), 0 4px 14px rgba(0,0,0,0.3) !important;
     }
     .driver-marker {
-      animation: pulse 1.8s infinite;
-      z-index: 10;
+      border-color: #3182CE !important;
+      animation: pulseDriver 2s infinite;
+      z-index: 30 !important;
     }
-    @keyframes pulse {
+    @keyframes pulseDriver {
       0% { box-shadow: 0 0 0 0 rgba(49, 130, 206, 0.7); }
-      70% { box-shadow: 0 0 0 16px rgba(49, 130, 206, 0); }
+      70% { box-shadow: 0 0 0 18px rgba(49, 130, 206, 0); }
       100% { box-shadow: 0 0 0 0 rgba(49, 130, 206, 0); }
     }
     .marker-label {
       position: absolute;
-      top: -24px;
-      background: rgba(15, 23, 42, 0.88);
+      top: -28px;
+      background: rgba(15, 23, 42, 0.92);
       color: #FFFFFF;
-      padding: 2px 7px;
-      border-radius: 5px;
+      padding: 3px 9px;
+      border-radius: 6px;
       font-size: 11px;
       font-weight: 700;
       white-space: nowrap;
       pointer-events: none;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
+
+    /* 2 Dấu chấm lộ trình (Start / End Route Endpoint Markers) */
+    .route-endpoint-marker {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      z-index: 25;
+    }
+    .route-endpoint-marker.start {
+      z-index: 26;
+    }
+    .route-endpoint-marker.end {
+      z-index: 27;
+    }
+    .endpoint-pulse {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      pointer-events: none;
+      top: -11px;
+      left: -11px;
+    }
+    .endpoint-pulse.start {
+      background: rgba(16, 185, 129, 0.38);
+      animation: pulseStart 2s ease-out infinite;
+    }
+    .endpoint-pulse.end {
+      background: rgba(239, 68, 68, 0.35);
+      animation: pulseEnd 2s ease-out infinite;
+    }
+    @keyframes pulseStart {
+      0% { transform: scale(0.5); opacity: 0.95; }
+      70% { transform: scale(1.35); opacity: 0; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+    @keyframes pulseEnd {
+      0% { transform: scale(0.5); opacity: 0.95; }
+      70% { transform: scale(1.35); opacity: 0; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+    .endpoint-dot {
+      position: relative;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 3.5px solid #FFFFFF;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+    .endpoint-dot.start {
+      background: linear-gradient(135deg, #10B981, #059669);
+    }
+    .endpoint-dot.end {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+    }
+    .endpoint-inner-core {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    }
+    .endpoint-dot.end .endpoint-inner-core {
+      border-radius: 2px;
+    }
+    .endpoint-badge {
+      position: absolute;
+      bottom: 34px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #FFFFFF;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      letter-spacing: 0.2px;
+    }
+    .endpoint-badge::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 4px;
+      border-style: solid;
+      border-color: rgba(15, 23, 42, 0.92) transparent transparent transparent;
+    }
+
     .mapboxgl-ctrl-bottom-right {
       display: none !important;
     }
@@ -231,6 +344,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
   <script>
     var map;
     var markersMap = {};
+    var routeEndpointMarkers = { start: null, end: null };
     var currentRouteGeoJson = null;
 
     try {
@@ -244,6 +358,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       });
 
       map.on('load', function() {
+        // Route Line Source & Layers
         map.addSource('route-source', {
           type: 'geojson',
           data: {
@@ -280,6 +395,45 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
           }
         });
 
+        // 2 Endpoint circles on map canvas for instant GPU rendering
+        map.addSource('route-endpoints-source', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        });
+
+        map.addLayer({
+          id: 'route-endpoints-outer',
+          type: 'circle',
+          source: 'route-endpoints-source',
+          paint: {
+            'circle-radius': 12,
+            'circle-color': '#FFFFFF',
+            'circle-opacity': 0.98,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#0F172A',
+            'circle-stroke-opacity': 0.28
+          }
+        });
+
+        map.addLayer({
+          id: 'route-endpoints-inner',
+          type: 'circle',
+          source: 'route-endpoints-source',
+          paint: {
+            'circle-radius': 8,
+            'circle-color': [
+              'match',
+              ['get', 'pointType'],
+              'start', '#10B981',
+              'end', '#EF4444',
+              '#3B82F6'
+            ]
+          }
+        });
+
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'MAP_LOADED' }));
         }
@@ -290,6 +444,66 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
     } catch(err) {
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'FATAL_ERROR', error: err.message }));
+      }
+    }
+
+    function createEndpointElement(type, title) {
+      var wrapper = document.createElement('div');
+      wrapper.className = 'route-endpoint-marker ' + type;
+
+      var pulse = document.createElement('div');
+      pulse.className = 'endpoint-pulse ' + type;
+      wrapper.appendChild(pulse);
+
+      var dot = document.createElement('div');
+      dot.className = 'endpoint-dot ' + type;
+
+      var inner = document.createElement('div');
+      inner.className = 'endpoint-inner-core';
+      dot.appendChild(inner);
+      wrapper.appendChild(dot);
+
+      var badge = document.createElement('div');
+      badge.className = 'endpoint-badge';
+      badge.innerText = title;
+      wrapper.appendChild(badge);
+
+      return wrapper;
+    }
+
+    function updateRouteEndpointMarkers(coords) {
+      if (!map) return;
+      if (!coords || coords.length < 2) {
+        if (routeEndpointMarkers.start) {
+          routeEndpointMarkers.start.remove();
+          routeEndpointMarkers.start = null;
+        }
+        if (routeEndpointMarkers.end) {
+          routeEndpointMarkers.end.remove();
+          routeEndpointMarkers.end = null;
+        }
+        return;
+      }
+
+      var startLngLat = coords[0];
+      var endLngLat = coords[coords.length - 1];
+
+      if (!routeEndpointMarkers.start) {
+        var startEl = createEndpointElement('start', 'Điểm đón');
+        routeEndpointMarkers.start = new goongjs.Marker({ element: startEl, anchor: 'center' })
+          .setLngLat(startLngLat)
+          .addTo(map);
+      } else {
+        routeEndpointMarkers.start.setLngLat(startLngLat);
+      }
+
+      if (!routeEndpointMarkers.end) {
+        var endEl = createEndpointElement('end', 'Điểm đến');
+        routeEndpointMarkers.end = new goongjs.Marker({ element: endEl, anchor: 'center' })
+          .setLngLat(endLngLat)
+          .addTo(map);
+      } else {
+        routeEndpointMarkers.end.setLngLat(endLngLat);
       }
     }
 
@@ -319,9 +533,14 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
           markersMap[id].setLngLat(lngLat);
         } else {
           var el = document.createElement('div');
-          el.className = 'custom-marker' + (id === 'driver' ? ' driver-marker' : '');
+          var isDriver = id === 'driver';
+          var isPickup = id === 'pickup' || id === 'pickup_restaurant';
+          var isDest = id === 'dest' || id === 'destination' || id === 'customer';
+          
+          var typeClass = isDriver ? ' driver-marker' : (isPickup ? ' pickup-marker' : (isDest ? ' dest-marker' : ''));
+          el.className = 'custom-marker' + typeClass;
           if (m.color) el.style.borderColor = m.color;
-          el.innerHTML = m.icon || '📍';
+          el.innerHTML = m.icon || (isPickup ? '🟢' : isDest ? '📍' : '🛵');
 
           if (m.title) {
             var label = document.createElement('div');
@@ -330,7 +549,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
             el.appendChild(label);
           }
 
-          var marker = new goongjs.Marker(el)
+          var marker = new goongjs.Marker({ element: el, anchor: 'center' })
             .setLngLat(lngLat)
             .addTo(map);
 
@@ -348,6 +567,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
     function renderRoute(coordsList) {
       if (!map) return;
       var source = map.getSource('route-source');
+      var endpointsSource = map.getSource('route-endpoints-source');
       if (!source) return;
 
       if (!coordsList || coordsList.length === 0) {
@@ -357,6 +577,10 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
           properties: {},
           geometry: { type: 'LineString', coordinates: [] }
         });
+        if (endpointsSource) {
+          endpointsSource.setData({ type: 'FeatureCollection', features: [] });
+        }
+        updateRouteEndpointMarkers(null);
         return;
       }
 
@@ -373,6 +597,28 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
           coordinates: coordinates
         }
       });
+
+      // Update GPU-rendered endpoint circle dots on canvas
+      if (endpointsSource && coordinates.length >= 2) {
+        endpointsSource.setData({
+          type: 'FeatureCollection',
+          features: [
+            {
+              type: 'Feature',
+              properties: { pointType: 'start' },
+              geometry: { type: 'Point', coordinates: coordinates[0] }
+            },
+            {
+              type: 'Feature',
+              properties: { pointType: 'end' },
+              geometry: { type: 'Point', coordinates: coordinates[coordinates.length - 1] }
+            }
+          ]
+        });
+      }
+
+      // Update interactive HTML endpoint markers with radar pulses & badges
+      updateRouteEndpointMarkers(coordinates);
 
       if (coordinates.length > 1) {
         var bounds = new goongjs.LngLatBounds();

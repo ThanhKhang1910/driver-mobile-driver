@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "NKGO Driver",
+    "slug": "nkgo-driver",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "nkgo-driver",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",

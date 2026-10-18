@@ -4,20 +4,31 @@ import Constants from 'expo-constants';
 
 import { Platform } from 'react-native';
 
-// IP máy tính chạy backend — cập nhật khi đổi mạng Wi-Fi
-const BACKEND_IP = '192.168.0.103';
+import * as Device from 'expo-device';
+
+// IP Wi-Fi hiện tại của máy tính (cập nhật khi đổi mạng Wi-Fi)
+const CURRENT_LAN_IP = '192.168.102.43';
 
 const getBaseURL = () => {
-  // Android Emulator dùng địa chỉ đặc biệt 10.0.2.2 thay vì localhost
-  if (Platform.OS === 'android') {
-    const hostUri = Constants.expoConfig?.hostUri;
-    const host = hostUri ? hostUri.split(':')[0] : BACKEND_IP;
-    const ip = (host === 'localhost' || host === '127.0.0.1') ? '10.0.2.2' : BACKEND_IP;
-    return `http://${ip}:5005/api/v1`;
+  if (Platform.OS === 'web') {
+    return 'http://localhost:5005/api/v1';
   }
 
-  // iOS (điện thoại thật hoặc tunnel) — luôn dùng IP máy tính trực tiếp
-  return `http://${BACKEND_IP}:5005/api/v1`;
+  // 1. Android Emulator: Luôn trỏ về 10.0.2.2
+  if (Platform.OS === 'android' && !Device.isDevice) {
+    return 'http://10.0.2.2:5005/api/v1';
+  }
+
+  // 2. Thiết bị thật (iPhone / Android thật):
+  const hostUri = Constants.expoConfig?.hostUri;
+  let host = hostUri ? hostUri.split(':')[0] : CURRENT_LAN_IP;
+
+  // Nếu host là link tunnel của Expo (*.exp.direct), ngrok không mở port 5005 -> Ép dùng IP Wi-Fi máy tính
+  if (host.includes('exp.direct') || host.includes('tunnel') || host === 'localhost' || host === '127.0.0.1') {
+    host = CURRENT_LAN_IP;
+  }
+
+  return `http://${host}:5005/api/v1`;
 };
 
 const axiosClient = axios.create({

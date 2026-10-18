@@ -243,9 +243,9 @@ export default function ActiveRide() {
               id: 'customer',
               latitude: Number(order.customer_latitude),
               longitude: Number(order.customer_longitude),
-              title: 'Khách hàng',
-              icon: '👤',
-              color: '#E53E3E',
+              title: 'Điểm đến (Khách hàng)',
+              icon: '🏁',
+              color: '#EF4444',
             });
           }
           const pLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
@@ -256,8 +256,8 @@ export default function ActiveRide() {
               latitude: Number(pLat),
               longitude: Number(pLng),
               title: order?.service_type === 'FOOD' ? 'Quán ăn' : 'Điểm đón',
-              icon: order?.service_type === 'FOOD' ? '🍔' : '📍',
-              color: '#38A169',
+              icon: order?.service_type === 'FOOD' ? '🍔' : '🟢',
+              color: '#10B981',
             });
           }
 
