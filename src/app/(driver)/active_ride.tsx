@@ -202,11 +202,15 @@ export default function ActiveRide() {
     ]);
   };
 
+  const isFood = order?.service_type === 'FOOD';
+  const isDelivery = order?.service_type === 'DELIVERY';
+  const isRide = ['BIKE', 'CAR', 'CAR_4', 'CAR_7'].includes(order?.service_type);
+
   const openNavigation = () => {
     let destLat, destLng;
     if (status === 'DRIVER_ASSIGNED') {
-      destLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
-      destLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
+      destLat = isFood ? (order?.restaurant_lat || order?.pickup_latitude) : order?.pickup_latitude;
+      destLng = isFood ? (order?.restaurant_lng || order?.pickup_longitude) : order?.pickup_longitude;
     } else {
       destLat = order?.customer_latitude;
       destLng = order?.customer_longitude;
@@ -238,41 +242,83 @@ export default function ActiveRide() {
               color: '#3182CE',
             });
           }
-          if (order?.customer_latitude && order?.customer_longitude) {
-            markers.push({
-              id: 'customer',
-              latitude: Number(order.customer_latitude),
-              longitude: Number(order.customer_longitude),
-              title: 'Điểm đến (Khách hàng)',
-              icon: '🏁',
-              color: '#EF4444',
-            });
-          }
-          const pLat = order?.service_type === 'FOOD' ? order?.restaurant_lat : order?.pickup_latitude;
-          const pLng = order?.service_type === 'FOOD' ? order?.restaurant_lng : order?.pickup_longitude;
-          if (pLat && pLng) {
-            markers.push({
-              id: 'pickup_restaurant',
-              latitude: Number(pLat),
-              longitude: Number(pLng),
-              title: order?.service_type === 'FOOD' ? 'Quán ăn' : 'Điểm đón',
-              icon: order?.service_type === 'FOOD' ? '🍔' : '🟢',
-              color: '#10B981',
-            });
+
+          const restLat = order?.restaurant_lat || order?.pickup_latitude;
+          const restLng = order?.restaurant_lng || order?.pickup_longitude;
+
+          if (isFood) {
+            // Điểm lấy món: Quán ăn / Nhà hàng
+            if (restLat && restLng) {
+              markers.push({
+                id: 'restaurant',
+                latitude: Number(restLat),
+                longitude: Number(restLng),
+                title: order?.shop_name ? `Quán: ${order.shop_name}` : 'Quán ăn (Điểm lấy món)',
+                icon: '🍔',
+                color: '#DD6B20',
+              });
+            }
+            // Điểm giao món: Khách hàng
+            if (order?.customer_latitude && order?.customer_longitude) {
+              markers.push({
+                id: 'customer',
+                latitude: Number(order.customer_latitude),
+                longitude: Number(order.customer_longitude),
+                title: 'Khách hàng (Điểm giao món)',
+                icon: '🏁',
+                color: '#EF4444',
+              });
+            }
+          } else {
+            // Chở khách / Giao bưu phẩm
+            if (order?.pickup_latitude && order?.pickup_longitude) {
+              markers.push({
+                id: 'pickup',
+                latitude: Number(order.pickup_latitude),
+                longitude: Number(order.pickup_longitude),
+                title: isDelivery ? 'Điểm lấy bưu phẩm' : 'Điểm đón khách',
+                icon: '🟢',
+                color: '#10B981',
+              });
+            }
+            if (order?.customer_latitude && order?.customer_longitude) {
+              markers.push({
+                id: 'customer',
+                latitude: Number(order.customer_latitude),
+                longitude: Number(order.customer_longitude),
+                title: isDelivery ? 'Điểm giao bưu phẩm' : 'Điểm trả khách',
+                icon: '🏁',
+                color: '#EF4444',
+              });
+            }
           }
 
-          const destCoords = order
-            ? {
-                latitude:
-                  status === 'DRIVER_ASSIGNED'
-                    ? Number(order.service_type === 'FOOD' ? order.restaurant_lat : order.pickup_latitude)
-                    : Number(order.customer_latitude),
-                longitude:
-                  status === 'DRIVER_ASSIGNED'
-                    ? Number(order.service_type === 'FOOD' ? order.restaurant_lng : order.pickup_longitude)
-                    : Number(order.customer_longitude),
-              }
-            : null;
+          let destCoords: { latitude: number; longitude: number } | null = null;
+          let destinationTitle = 'Điểm đến';
+
+          if (isFood) {
+            if (status === 'DRIVER_ASSIGNED') {
+              destCoords = restLat && restLng ? { latitude: Number(restLat), longitude: Number(restLng) } : null;
+              destinationTitle = order?.shop_name ? `Quán: ${order.shop_name}` : 'Quán ăn (Điểm lấy món)';
+            } else {
+              destCoords = order?.customer_latitude && order?.customer_longitude
+                ? { latitude: Number(order.customer_latitude), longitude: Number(order.customer_longitude) }
+                : null;
+              destinationTitle = 'Khách hàng (Điểm giao món)';
+            }
+          } else {
+            if (status === 'DRIVER_ASSIGNED') {
+              destCoords = order?.pickup_latitude && order?.pickup_longitude
+                ? { latitude: Number(order.pickup_latitude), longitude: Number(order.pickup_longitude) }
+                : null;
+              destinationTitle = isDelivery ? 'Điểm lấy bưu phẩm' : 'Điểm đón khách';
+            } else {
+              destCoords = order?.customer_latitude && order?.customer_longitude
+                ? { latitude: Number(order.customer_latitude), longitude: Number(order.customer_longitude) }
+                : null;
+              destinationTitle = isDelivery ? 'Điểm giao bưu phẩm' : 'Điểm trả khách';
+            }
+          }
 
           return (
             <GoongMapView
@@ -288,6 +334,8 @@ export default function ActiveRide() {
               vehicle="bike"
               routeColor="#3399FF"
               routeWidth={5}
+              hideOriginEndpoint={true}
+              destinationTitle={destinationTitle}
             />
           );
         })()}
@@ -303,20 +351,62 @@ export default function ActiveRide() {
       </View>
 
       <View style={[styles.infoCard, { paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
-        <Text style={styles.title}>Chuyến xe hiện tại</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={styles.title}>
+            {isFood ? '🍔 Đơn giao đồ ăn' : isDelivery ? '📦 Đơn giao bưu phẩm' : '🛵 Chuyến xe chở khách'}
+          </Text>
+          <View style={{ backgroundColor: '#EBF8FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#2B6CB0' }}>#{id}</Text>
+          </View>
+        </View>
         
-        <View style={styles.row}>
-          <Ionicons name="person" size={20} color="#4A5568" />
-          <Text style={styles.label}>Khách hàng: {order?.customer_name || 'Khách'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Ionicons name="location" size={20} color="#3182CE" />
-          <Text style={styles.label}>Đón: {order?.pickup_address || order?.restaurant_address || 'Đang cập nhật'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Ionicons name="flag" size={20} color="#E53E3E" />
-          <Text style={styles.label}>Trả: {order?.address || 'Đang cập nhật'}</Text>
-        </View>
+        {isFood ? (
+          <>
+            <View style={styles.row}>
+              <Ionicons name="restaurant" size={20} color="#DD6B20" />
+              <Text style={styles.label} numberOfLines={2}>
+                <Text style={{ fontWeight: '700', color: '#1A202C' }}>Lấy món: </Text>
+                {order?.shop_name ? `${order.shop_name} - ` : ''}
+                {order?.restaurant_address || order?.pickup_address || 'Đang cập nhật'}
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Ionicons name="location" size={20} color="#E53E3E" />
+              <Text style={styles.label} numberOfLines={2}>
+                <Text style={{ fontWeight: '700', color: '#1A202C' }}>Giao đến: </Text>
+                {order?.address || 'Đang cập nhật'}
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Ionicons name="person" size={20} color="#4A5568" />
+              <Text style={styles.label}>
+                <Text style={{ fontWeight: '700', color: '#1A202C' }}>Khách nhận: </Text>
+                {order?.customer_name || 'Khách hàng'}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={styles.row}>
+              <Ionicons name="person" size={20} color="#4A5568" />
+              <Text style={styles.label}>Khách hàng: {order?.customer_name || 'Khách'}</Text>
+            </View>
+            <View style={styles.row}>
+              <Ionicons name="location" size={20} color="#3182CE" />
+              <Text style={styles.label}>
+                {isDelivery ? 'Lấy hàng: ' : 'Đón: '}
+                {order?.pickup_address || 'Đang cập nhật'}
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Ionicons name="flag" size={20} color="#E53E3E" />
+              <Text style={styles.label}>
+                {isDelivery ? 'Giao đến: ' : 'Trả: '}
+                {order?.address || 'Đang cập nhật'}
+              </Text>
+            </View>
+          </>
+        )}
         
         <View style={styles.divider} />
         
@@ -348,13 +438,13 @@ export default function ActiveRide() {
         {status === 'DRIVER_ASSIGNED' ? (
           <TouchableOpacity style={styles.completeBtn} onPress={() => handleUpdateStatus('DELIVERING')}>
             <Text style={styles.btnText}>
-              {order?.service_type === 'BIKE' ? 'Đã đón khách' : 'Đã lấy đồ ăn (Bắt đầu giao)'}
+              {isFood ? 'Đã lấy đồ ăn (Bắt đầu giao)' : isDelivery ? 'Đã lấy bưu phẩm' : 'Đã đón khách'}
             </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={[styles.completeBtn, { backgroundColor: '#38A169' }]} onPress={() => handleUpdateStatus('COMPLETED')}>
             <Text style={styles.btnText}>
-              {order?.service_type === 'BIKE' ? 'Hoàn Thành Cuốc' : 'Giao Hàng Thành Công'}
+              {isFood ? 'Giao Món Thành Công 🎉' : isDelivery ? 'Giao Hàng Thành Công 🎉' : 'Hoàn Thành Cuốc Xe 🎉'}
             </Text>
           </TouchableOpacity>
         )}

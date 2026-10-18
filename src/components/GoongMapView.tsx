@@ -61,6 +61,11 @@ export interface GoongMapViewProps {
   showsUserLocation?: boolean;
   onMapReady?: () => void;
   onRouteReady?: (result: { distanceMeters: number; durationSeconds: number }) => void;
+  showEndpoints?: boolean;
+  originTitle?: string;
+  destinationTitle?: string;
+  hideOriginEndpoint?: boolean;
+  hideDestinationEndpoint?: boolean;
 }
 
 const DEFAULT_CENTER: LatLng = {
@@ -83,6 +88,11 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       style,
       onMapReady,
       onRouteReady,
+      showEndpoints = true,
+      originTitle = 'Điểm đón',
+      destinationTitle = 'Điểm đến',
+      hideOriginEndpoint = false,
+      hideDestinationEndpoint = false,
     },
     ref
   ) => {
@@ -150,11 +160,19 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       }
     }, [markers, isMapLoaded, runJs]);
 
+    const endpointOpts = JSON.stringify({
+      showEndpoints,
+      originTitle,
+      destinationTitle,
+      hideOriginEndpoint,
+      hideDestinationEndpoint,
+    });
+
     useEffect(() => {
       if (isMapLoaded) {
-        runJs(`renderRoute(${JSON.stringify(activeRoute)});`);
+        runJs(`renderRoute(${JSON.stringify(activeRoute)}, ${endpointOpts});`);
       }
-    }, [activeRoute, isMapLoaded, runJs]);
+    }, [activeRoute, isMapLoaded, endpointOpts, runJs]);
 
     const handleMessage = (event: any) => {
       try {
@@ -439,7 +457,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
         }
 
         renderMarkers(${JSON.stringify(markers)});
-        renderRoute(${JSON.stringify(activeRoute)});
+        renderRoute(${JSON.stringify(activeRoute)}, ${endpointOpts});
       });
     } catch(err) {
       if (window.ReactNativeWebView) {
@@ -471,9 +489,15 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       return wrapper;
     }
 
-    function updateRouteEndpointMarkers(coords) {
+    function updateRouteEndpointMarkers(coords, opts) {
       if (!map) return;
-      if (!coords || coords.length < 2) {
+      var show = opts ? opts.showEndpoints !== false : true;
+      var hideStart = opts ? opts.hideOriginEndpoint === true : false;
+      var hideEnd = opts ? opts.hideDestinationEndpoint === true : false;
+      var startTitle = (opts && opts.originTitle) || 'Điểm đón';
+      var endTitle = (opts && opts.destinationTitle) || 'Điểm đến';
+
+      if (!coords || coords.length < 2 || !show) {
         if (routeEndpointMarkers.start) {
           routeEndpointMarkers.start.remove();
           routeEndpointMarkers.start = null;
@@ -488,22 +512,40 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       var startLngLat = coords[0];
       var endLngLat = coords[coords.length - 1];
 
-      if (!routeEndpointMarkers.start) {
-        var startEl = createEndpointElement('start', 'Điểm đón');
-        routeEndpointMarkers.start = new goongjs.Marker({ element: startEl, anchor: 'center' })
-          .setLngLat(startLngLat)
-          .addTo(map);
+      if (hideStart) {
+        if (routeEndpointMarkers.start) {
+          routeEndpointMarkers.start.remove();
+          routeEndpointMarkers.start = null;
+        }
       } else {
-        routeEndpointMarkers.start.setLngLat(startLngLat);
+        if (!routeEndpointMarkers.start) {
+          var startEl = createEndpointElement('start', startTitle);
+          routeEndpointMarkers.start = new goongjs.Marker({ element: startEl, anchor: 'center' })
+            .setLngLat(startLngLat)
+            .addTo(map);
+        } else {
+          routeEndpointMarkers.start.setLngLat(startLngLat);
+          var b = routeEndpointMarkers.start.getElement().querySelector('.endpoint-badge');
+          if (b) b.innerText = startTitle;
+        }
       }
 
-      if (!routeEndpointMarkers.end) {
-        var endEl = createEndpointElement('end', 'Điểm đến');
-        routeEndpointMarkers.end = new goongjs.Marker({ element: endEl, anchor: 'center' })
-          .setLngLat(endLngLat)
-          .addTo(map);
+      if (hideEnd) {
+        if (routeEndpointMarkers.end) {
+          routeEndpointMarkers.end.remove();
+          routeEndpointMarkers.end = null;
+        }
       } else {
-        routeEndpointMarkers.end.setLngLat(endLngLat);
+        if (!routeEndpointMarkers.end) {
+          var endEl = createEndpointElement('end', endTitle);
+          routeEndpointMarkers.end = new goongjs.Marker({ element: endEl, anchor: 'center' })
+            .setLngLat(endLngLat)
+            .addTo(map);
+        } else {
+          routeEndpointMarkers.end.setLngLat(endLngLat);
+          var b2 = routeEndpointMarkers.end.getElement().querySelector('.endpoint-badge');
+          if (b2) b2.innerText = endTitle;
+        }
       }
     }
 
@@ -564,11 +606,15 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       }
     }
 
-    function renderRoute(coordsList) {
+    function renderRoute(coordsList, opts) {
       if (!map) return;
       var source = map.getSource('route-source');
       var endpointsSource = map.getSource('route-endpoints-source');
       if (!source) return;
+
+      var show = opts ? opts.showEndpoints !== false : true;
+      var hideStart = opts ? opts.hideOriginEndpoint === true : false;
+      var hideEnd = opts ? opts.hideDestinationEndpoint === true : false;
 
       if (!coordsList || coordsList.length === 0) {
         currentRouteGeoJson = null;
@@ -580,7 +626,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
         if (endpointsSource) {
           endpointsSource.setData({ type: 'FeatureCollection', features: [] });
         }
-        updateRouteEndpointMarkers(null);
+        updateRouteEndpointMarkers(null, opts);
         return;
       }
 
@@ -599,26 +645,32 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
       });
 
       // Update GPU-rendered endpoint circle dots on canvas
-      if (endpointsSource && coordinates.length >= 2) {
-        endpointsSource.setData({
-          type: 'FeatureCollection',
-          features: [
-            {
+      if (endpointsSource) {
+        var features = [];
+        if (show && coordinates.length >= 2) {
+          if (!hideStart) {
+            features.push({
               type: 'Feature',
               properties: { pointType: 'start' },
               geometry: { type: 'Point', coordinates: coordinates[0] }
-            },
-            {
+            });
+          }
+          if (!hideEnd) {
+            features.push({
               type: 'Feature',
               properties: { pointType: 'end' },
               geometry: { type: 'Point', coordinates: coordinates[coordinates.length - 1] }
-            }
-          ]
+            });
+          }
+        }
+        endpointsSource.setData({
+          type: 'FeatureCollection',
+          features: features
         });
       }
 
       // Update interactive HTML endpoint markers with radar pulses & badges
-      updateRouteEndpointMarkers(coordinates);
+      updateRouteEndpointMarkers(coordinates, opts);
 
       if (coordinates.length > 1) {
         var bounds = new goongjs.LngLatBounds();

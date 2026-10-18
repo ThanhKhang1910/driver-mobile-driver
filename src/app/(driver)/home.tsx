@@ -353,8 +353,17 @@ export default function DriverHome() {
                   </Text>
                   <Text style={styles.orderPrice}>{parseFloat(order.total_amount).toLocaleString()}đ</Text>
                 </View>
-                <Text style={styles.addressText}><Ionicons name="location" color="#3182CE"/> Điểm đón: {order.pickup_address || 'Đang cập nhật'}</Text>
-                <Text style={styles.addressText}><Ionicons name="flag" color="#E53E3E"/> Điểm đến: {order.destination_address || 'Đang cập nhật'}</Text>
+                <Text style={styles.addressText}>
+                  <Ionicons name={order.service_type === 'FOOD' ? 'restaurant' : 'location'} color={order.service_type === 'FOOD' ? '#DD6B20' : '#3182CE'}/>{' '}
+                  {order.service_type === 'FOOD' ? 'Quán: ' : order.service_type === 'DELIVERY' ? 'Lấy hàng: ' : 'Điểm đón: '}
+                  {order.service_type === 'FOOD' && order.shop_name ? `${order.shop_name} - ` : ''}
+                  {order.pickup_address || order.restaurant_address || 'Đang cập nhật'}
+                </Text>
+                <Text style={styles.addressText}>
+                  <Ionicons name="flag" color="#E53E3E"/>{' '}
+                  {order.service_type === 'FOOD' || order.service_type === 'DELIVERY' ? 'Giao đến: ' : 'Điểm đến: '}
+                  {order.destination_address || order.address || 'Đang cập nhật'}
+                </Text>
                 <View style={styles.acceptButtonBadge}>
                   <Text style={styles.tapToAccept}>⚡ Chạm để nhận cuốc ngay</Text>
                 </View>
