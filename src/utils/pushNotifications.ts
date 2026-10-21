@@ -1,60 +1,84 @@
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Khởi tạo an toàn cho expo-notifications
+let Notifications: typeof import('expo-notifications') | null = null;
 
-export async function registerForPushNotificationsAsync() {
-  let token;
-
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
+try {
+  Notifications = require('expo-notifications');
+  if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
     });
   }
+} catch {
+  // Chạy trên Expo Go hoặc môi trường thiếu native notification module, bỏ qua âm thầm
+}
 
-  if (Device.isDevice) {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    if (finalStatus !== 'granted') {
-      console.warn('Failed to get push token for push notification!');
-      return null;
+export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  // Kiểm tra nếu đang chạy trong Expo Go thì bỏ qua đăng ký push token (do Expo SDK 53+ không hỗ trợ trong Expo Go)
+  const isExpoGo =
+    Constants.executionEnvironment === 'storeClient' ||
+    Constants.appOwnership === 'expo';
+
+  if (isExpoGo || !Notifications) {
+    return 'dummy-token';
+  }
+
+  let token: string | null = null;
+
+  try {
+    if (Platform.OS === 'android') {
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      } catch {
+        // Bỏ qua nếu channel manager không khả dụng
+      }
     }
 
-    try {
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-      
-      if (!projectId) {
-        console.warn('No EAS projectId found. Skipping Push Token registration for local dev.');
-        return 'dummy-token';
+    if (Device.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
       }
 
-      token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    } catch (e) {
-      console.warn('Could not get Expo Push Token:', e);
+      if (finalStatus !== 'granted') {
+        return null;
+      }
+
+      try {
+        const projectId =
+          Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
+
+        if (!projectId) {
+          return 'dummy-token';
+        }
+
+        const pushTokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+        token = pushTokenData.data;
+      } catch {
+        token = 'dummy-token';
+      }
+    } else {
       token = 'dummy-token';
     }
-  } else {
-    console.warn('Must use physical device for Push Notifications');
+  } catch {
+    token = 'dummy-token';
   }
 
   return token;

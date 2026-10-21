@@ -41,10 +41,14 @@ export const GoongDirections: React.FC<GoongDirectionsProps> = ({
             distanceMeters: res.distanceMeters,
             durationSeconds: res.durationSeconds,
           });
+        } else {
+          setCoordinates([]);
+          onError?.(new Error('Không tìm thấy lộ trình'));
         }
       })
       .catch((err) => {
         if (!isMounted) return;
+        setCoordinates([]);
         console.warn('GoongDirections fetch error:', err);
         onError?.(err);
       });

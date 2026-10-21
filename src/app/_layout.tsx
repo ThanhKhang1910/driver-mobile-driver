@@ -4,7 +4,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 
-LogBox.ignoreLogs(['expo-notifications: Android Push notifications']);
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  '[expo-notifications]',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+]);
 
 export default function RootLayout() {
   return (

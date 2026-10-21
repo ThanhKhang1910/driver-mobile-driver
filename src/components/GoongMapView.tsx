@@ -112,9 +112,13 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
                 distanceMeters: res.distanceMeters,
                 durationSeconds: res.durationSeconds,
               });
+            } else {
+              setInternalRoute([]);
             }
           })
           .catch((err) => {
+            if (!isMounted) return;
+            setInternalRoute([]);
             console.warn('[GoongMapView] Lỗi tìm đường Goong:', err);
           });
         return () => {
