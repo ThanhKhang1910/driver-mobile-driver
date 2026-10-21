@@ -224,6 +224,35 @@ export default function ActiveRide() {
     }
   };
 
+  const handleCallCustomer = () => {
+    const phone = order?.customer_phone;
+    if (!phone) {
+      Alert.alert(
+        'Không có số điện thoại',
+        'Không tìm thấy số điện thoại của khách hàng. Bạn có thể nhắn tin cho khách qua phần Chat.',
+        [
+          { text: 'Nhắn tin', onPress: () => router.push(`/chat/${id}`) },
+          { text: 'Đóng', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      'Gọi cho Khách hàng 📞',
+      `Khách hàng: ${order?.customer_name || 'Khách hàng'}\nSố điện thoại: ${phone}\n\nỨng dụng sẽ mở trình gọi điện thoại để kết nối trực tiếp.`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Gọi ngay',
+          onPress: () => {
+            Linking.openURL(`tel:${phone}`);
+          },
+        },
+      ]
+    );
+  };
+
   const currentLatitude = location?.coords?.latitude || Number(order?.pickup_latitude) || 10.8429;
   const currentLongitude = location?.coords?.longitude || Number(order?.pickup_longitude) || 106.7826;
 
@@ -410,24 +439,50 @@ export default function ActiveRide() {
         
         <View style={styles.divider} />
         
-        <View style={styles.actionRow}>
-          <View style={styles.priceContainer}>
-             <Text style={styles.priceLabel}>Thu tiền mặt:</Text>
-             <Text style={styles.priceValue}>{order ? parseFloat(order.total_amount).toLocaleString() : 0}đ</Text>
-          </View>
-          <TouchableOpacity 
-            style={[styles.chatBtn, { backgroundColor: '#3182CE', marginRight: 10 }]}
-            onPress={openNavigation}
-          >
-            <Ionicons name="map-outline" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.chatBtn}
-            onPress={() => router.push(`/chat/${id}`)}
-          >
-            <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
+        {(() => {
+          const isPrepaid = order?.payment_method && order.payment_method !== 'CASH';
+          return (
+            <View style={styles.actionRow}>
+              <View style={styles.priceContainer}>
+                <Text style={[styles.priceLabel, isPrepaid && { color: '#059669' }]}>
+                  {isPrepaid ? 'Đã thanh toán (Online):' : 'Thu tiền mặt:'}
+                </Text>
+                <Text style={[styles.priceValue, isPrepaid ? { color: '#059669', fontSize: 18 } : { color: '#DC2626' }]}>
+                  {isPrepaid ? '0đ (Không thu khách)' : `${order ? parseFloat(order.total_amount).toLocaleString() : 0}đ`}
+                </Text>
+              </View>
+
+              <View style={styles.btnActionGroup}>
+                {/* Nút Gọi điện thoại cho khách */}
+                <TouchableOpacity 
+                  style={[styles.actionBtnCircle, { backgroundColor: '#10B981' }]}
+                  onPress={handleCallCustomer}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="call" size={20} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Nút Nhắn tin Chat */}
+                <TouchableOpacity 
+                  style={[styles.actionBtnCircle, { backgroundColor: '#3B82F6' }]}
+                  onPress={() => router.push(`/chat/${id}`)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="chatbubble-ellipses" size={20} color="#FFF" />
+                </TouchableOpacity>
+
+                {/* Nút Mở Google Maps chỉ đường */}
+                <TouchableOpacity 
+                  style={[styles.actionBtnCircle, { backgroundColor: '#6366F1' }]}
+                  onPress={openNavigation}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="navigate" size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })()}
 
         {status === 'DRIVER_ASSIGNED' && (
           <TouchableOpacity style={[styles.completeBtn, { backgroundColor: '#FC8181', marginBottom: 10 }]} onPress={handleCancel}>
@@ -529,18 +584,22 @@ const styles = StyleSheet.create({
     color: '#3399FF',
     fontWeight: 'bold',
   },
-  chatBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#3399FF',
+  btnActionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  actionBtnCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3399FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   completeBtn: {
     backgroundColor: '#3399FF',

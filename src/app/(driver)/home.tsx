@@ -26,6 +26,12 @@ export default function DriverHome() {
 
   const playAlarm = async () => {
     try {
+      const isLoud = await AsyncStorage.getItem('driver_loud_notification');
+      if (isLoud === 'false') {
+        // Tài xế tắt âm báo lớn -> chỉ rung nhẹ 1 nhịp, không đổ chuông ồn
+        Vibration.vibrate(500);
+        return;
+      }
       Vibration.vibrate([0, 500, 500, 500], true);
       alarmPlayer.loop = true;
       alarmPlayer.play();
