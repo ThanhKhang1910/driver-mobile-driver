@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,8 +10,10 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axiosClient from '@/api/axiosClient';
@@ -30,6 +32,7 @@ interface EarningsData {
 
 export default function DriverEarningsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [data, setData] = useState<EarningsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +41,27 @@ export default function DriverEarningsScreen() {
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [bankAccount, setBankAccount] = useState('190368889999 - Techcombank');
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // 60FPS Entry Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(120, [
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(contentAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 45,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, contentAnim]);
 
   const fetchEarnings = async () => {
     try {
@@ -91,21 +115,40 @@ export default function DriverEarningsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Thu Nhập & Ví Tài Xế</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={fetchEarnings}>
-          <Ionicons name="refresh" size={20} color="#0F172A" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      {/* Header NK Go Green Gradient */}
+      <Animated.View
+        style={{
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <LinearGradient
+          colors={['#174A1B', '#236E27', '#388E3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Thu Nhập & Ví Tài Xế</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={fetchEarnings}>
+            <Ionicons name="refresh" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </LinearGradient>
+      </Animated.View>
 
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#10B981" />
+          <ActivityIndicator size="large" color="#2E7D32" />
           <Text style={styles.loadingText}>Đang tổng hợp doanh thu...</Text>
         </View>
       ) : (
@@ -113,8 +156,26 @@ export default function DriverEarningsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Main Wallet Card */}
-          <View style={styles.walletCard}>
+          <Animated.View
+            style={{
+              opacity: contentAnim,
+              transform: [
+                {
+                  translateY: contentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [24, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            {/* Main Wallet Card */}
+          <LinearGradient
+            colors={['#2E7D32', '#1B5E20']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.walletCard}
+          >
             <View style={styles.walletTop}>
               <View>
                 <Text style={styles.walletLabel}>Số dư ví tài xế khả dụng</Text>
@@ -132,18 +193,18 @@ export default function DriverEarningsScreen() {
                 style={styles.withdrawBtn}
                 onPress={() => setWithdrawModal(true)}
               >
-                <Ionicons name="cash-outline" size={16} color="#10B981" />
+                <Ionicons name="cash-outline" size={16} color="#2E7D32" />
                 <Text style={styles.withdrawBtnText}>Rút tiền về ngân hàng</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </LinearGradient>
 
           {/* Metric Cards Row */}
           <View style={styles.statsRow}>
             {/* Today */}
             <View style={styles.statCard}>
               <View style={styles.statIconBadge}>
-                <Ionicons name="today-outline" size={18} color="#3B82F6" />
+                <Ionicons name="today-outline" size={18} color="#2E7D32" />
               </View>
               <Text style={styles.statLabel}>Hôm nay</Text>
               <Text style={styles.statValue}>
@@ -154,8 +215,8 @@ export default function DriverEarningsScreen() {
 
             {/* This Week */}
             <View style={styles.statCard}>
-              <View style={[styles.statIconBadge, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="calendar-outline" size={18} color="#10B981" />
+              <View style={[styles.statIconBadge, { backgroundColor: '#F1F8E9' }]}>
+                <Ionicons name="calendar-outline" size={18} color="#388E3C" />
               </View>
               <Text style={styles.statLabel}>7 ngày qua</Text>
               <Text style={styles.statValue}>
@@ -166,8 +227,8 @@ export default function DriverEarningsScreen() {
 
             {/* Lifetime Total */}
             <View style={styles.statCard}>
-              <View style={[styles.statIconBadge, { backgroundColor: '#FDF2F8' }]}>
-                <Ionicons name="trophy-outline" size={18} color="#EC4899" />
+              <View style={[styles.statIconBadge, { backgroundColor: '#FFF8E1' }]}>
+                <Ionicons name="trophy-outline" size={18} color="#F59E0B" />
               </View>
               <Text style={styles.statLabel}>Tổng tích lũy</Text>
               <Text style={styles.statValue}>
@@ -180,11 +241,11 @@ export default function DriverEarningsScreen() {
           {/* Breakdown & Commission policy */}
           <View style={styles.policyCard}>
             <View style={styles.policyRow}>
-              <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
+              <Ionicons name="information-circle-outline" size={20} color="#2E7D32" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.policyTitle}>Chính sách chia sẻ doanh thu</Text>
                 <Text style={styles.policyText}>
-                  Tài xế thực nhận 80% cước phí chuyến xe. Phí nền tảng NKGO là 20% (đã bao gồm bảo hiểm chuyến đi).
+                  Tài xế thực nhận 80% cước phí chuyến xe. Phí nền tảng NK Go là 20% (đã bao gồm bảo hiểm chuyến đi).
                 </Text>
               </View>
             </View>
@@ -201,15 +262,16 @@ export default function DriverEarningsScreen() {
           <View style={styles.historyList}>
             <View style={styles.historyItem}>
               <View style={styles.historyIconBox}>
-                <Ionicons name="arrow-down-circle" size={24} color="#10B981" />
+                <Ionicons name="arrow-down-circle" size={24} color="#2E7D32" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyTitle}>Nhận cước chuyến xe #Hoàn tất</Text>
-                <Text style={styles.historyDate}>Hôm nay • NKGO Car/Bike</Text>
+                <Text style={styles.historyDate}>Hôm nay • NK Go Car/Bike</Text>
               </View>
               <Text style={styles.historyAmountPlus}>+{(data?.today || 35000).toLocaleString()}đ</Text>
             </View>
           </View>
+          </Animated.View>
         </ScrollView>
       )}
 
@@ -273,7 +335,7 @@ export default function DriverEarningsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -286,35 +348,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#174A1B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   backBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 40,
   },
   walletCard: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#2E7D32',
     borderRadius: 20,
     padding: 18,
     marginBottom: 16,
-    shadowColor: '#10B981',
+    shadowColor: '#2E7D32',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -327,7 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   walletLabel: {
-    color: '#D1FAE5',
+    color: '#E8F5E9',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 4,
@@ -359,7 +425,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   withdrawBtnText: {
-    color: '#065F46',
+    color: '#1B5E20',
     fontSize: 13,
     fontWeight: '800',
   },
@@ -374,14 +440,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
     alignItems: 'center',
   },
   statIconBadge: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -404,11 +470,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   policyCard: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E8F5E9',
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#C8E6C9',
     marginBottom: 20,
   },
   policyRow: {
@@ -418,12 +484,12 @@ const styles = StyleSheet.create({
   policyTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#1E40AF',
+    color: '#1B5E20',
     marginBottom: 2,
   },
   policyText: {
     fontSize: 11,
-    color: '#1E3A8A',
+    color: '#2E7D32',
     lineHeight: 16,
   },
   sectionHeader: {
@@ -439,7 +505,7 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     fontSize: 12,
-    color: '#3B82F6',
+    color: '#2E7D32',
     fontWeight: '700',
   },
   historyList: {
@@ -471,7 +537,7 @@ const styles = StyleSheet.create({
   historyAmountPlus: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#10B981',
+    color: '#2E7D32',
   },
   loadingBox: {
     alignItems: 'center',
@@ -529,7 +595,7 @@ const styles = StyleSheet.create({
   },
   quickAmtBtn: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E8F5E9',
     paddingVertical: 8,
     borderRadius: 10,
     alignItems: 'center',
@@ -537,10 +603,10 @@ const styles = StyleSheet.create({
   quickAmtText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#475569',
+    color: '#2E7D32',
   },
   confirmWithdrawBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#2E7D32',
     borderRadius: 14,
     height: 48,
     justifyContent: 'center',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,16 +10,25 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Dimensions,
+  Animated,
+  Image,
+  StatusBar,
+  Easing,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import axiosClient from '@/api/axiosClient';
-import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { login } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,11 +37,94 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
   const [vehicleType, setVehicleType] = useState('BIKE');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState('');
+  const [focusedField, setFocusedField] = useState<string>('');
+
+  // Animated Values
+  const headerSlideDown = useRef(new Animated.Value(-120)).current;
+  const riderSlideFromRight = useRef(new Animated.Value(width * 0.7)).current;
+  const riderOpacity = useRef(new Animated.Value(0)).current;
+  const riderBob = useRef(new Animated.Value(0)).current;
+
+  const formSlideUp = useRef(new Animated.Value(150)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const btnScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(headerSlideDown, {
+      toValue: 0,
+      friction: 7,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.parallel([
+      Animated.spring(riderSlideFromRight, {
+        toValue: 0,
+        friction: 6.5,
+        tension: 30,
+        delay: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(riderOpacity, {
+        toValue: 1,
+        duration: 350,
+        delay: 80,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(riderBob, {
+            toValue: -3,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(riderBob, {
+            toValue: 0,
+            duration: 700,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
+
+    Animated.parallel([
+      Animated.spring(formSlideUp, {
+        toValue: 0,
+        friction: 8,
+        tension: 35,
+        delay: 240,
+        useNativeDriver: true,
+      }),
+      Animated.timing(formOpacity, {
+        toValue: 1,
+        duration: 400,
+        delay: 240,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handlePressIn = () => {
+    Animated.spring(btnScale, {
+      toValue: 0.96,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(btnScale, {
+      toValue: 1,
+      friction: 4,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const handleRegister = async () => {
     if (!fullName || !email || !phone || !password || !confirmPassword) {
@@ -78,7 +170,7 @@ export default function RegisterScreen() {
       });
 
       await login(res.data.user, res.data.token);
-      Alert.alert('Thành công', 'Đăng ký Tài xế thành công! 🎉');
+      Alert.alert('Thành công', 'Đăng ký Đối tác Tài xế NK Go thành công! 🎉');
       router.replace('/(driver)/home');
     } catch (error: any) {
       console.log('Register error:', error);
@@ -89,361 +181,558 @@ export default function RegisterScreen() {
     }
   };
 
-  const renderInput = (
-    label: string,
-    fieldName: string,
-    icon: string,
-    value: string,
-    onChangeText: (text: string) => void,
-    options?: {
-      placeholder?: string;
-      keyboardType?: any;
-      autoCapitalize?: any;
-      secureTextEntry?: boolean;
-      showToggle?: boolean;
-      toggleValue?: boolean;
-      onToggle?: () => void;
-    }
-  ) => (
-    <View style={styles.inputGroup}>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <View style={[
-        styles.inputWrapper,
-        focusedField === fieldName && styles.inputFocused,
-      ]}>
-        <Ionicons 
-          name={icon as any} 
-          size={20} 
-          color={focusedField === fieldName ? '#3399FF' : '#94A3B8'} 
-          style={styles.inputIcon} 
-        />
-        <TextInput
-          style={styles.input}
-          placeholder={options?.placeholder || ''}
-          placeholderTextColor="#94A3B8"
-          keyboardType={options?.keyboardType || 'default'}
-          autoCapitalize={options?.autoCapitalize || 'sentences'}
-          secureTextEntry={options?.secureTextEntry || false}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocusedField(fieldName)}
-          onBlur={() => setFocusedField('')}
-        />
-        {options?.showToggle && (
-          <TouchableOpacity onPress={options.onToggle} style={styles.eyeButton}>
-            <Ionicons 
-              name={options.toggleValue ? 'eye-outline' : 'eye-off-outline'} 
-              size={20} 
-              color="#94A3B8" 
-            />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.container}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          
-          {/* Decorative circles */}
-          <View style={styles.topDecoration}>
-            <View style={styles.wave1} />
-            <View style={styles.wave2} />
-          </View>
-
-          {/* Header */}
-          <View style={styles.headerContainer}>
-            <View style={styles.iconContainer}>
-              <View style={styles.iconInner}>
-                <Ionicons name="person-add" size={28} color="#FFFFFF" />
-              </View>
-            </View>
-            <Text style={styles.title}>Đăng ký Tài xế</Text>
-            <Text style={styles.subtitle}>Gia nhập đội ngũ giao hàng của FoodDelivery</Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.formContainer}>
-            {renderInput('Họ và tên', 'fullName', 'person-outline', fullName, setFullName, {
-              placeholder: 'Nguyễn Văn A',
-            })}
-
-            {renderInput('Email', 'email', 'mail-outline', email, setEmail, {
-              placeholder: 'example@gmail.com',
-              keyboardType: 'email-address',
-              autoCapitalize: 'none',
-            })}
-
-            {renderInput('Số điện thoại', 'phone', 'call-outline', phone, setPhone, {
-              placeholder: '0901234567',
-              keyboardType: 'phone-pad',
-            })}
-
-            {renderInput('Mật khẩu', 'password', 'lock-closed-outline', password, setPassword, {
-              placeholder: 'Tối thiểu 6 ký tự',
-              secureTextEntry: !showPassword,
-              showToggle: true,
-              toggleValue: showPassword,
-              onToggle: () => setShowPassword(!showPassword),
-            })}
-
-            {renderInput('Xác nhận mật khẩu', 'confirmPassword', 'shield-checkmark-outline', confirmPassword, setConfirmPassword, {
-              placeholder: 'Nhập lại mật khẩu',
-              secureTextEntry: !showConfirmPassword,
-              showToggle: true,
-              toggleValue: showConfirmPassword,
-              onToggle: () => setShowConfirmPassword(!showConfirmPassword),
-            })}
-
-            {renderInput('Biển số xe', 'vehiclePlate', 'car-outline', vehiclePlate, setVehiclePlate, {
-              placeholder: 'VD: 59-X1 123.45',
-              autoCapitalize: 'characters',
-            })}
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Loại xe</Text>
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity 
-                  style={[styles.typeButton, vehicleType === 'BIKE' && styles.typeButtonActive]}
-                  onPress={() => setVehicleType('BIKE')}
-                >
-                  <Ionicons name="bicycle" size={20} color={vehicleType === 'BIKE' ? '#FFFFFF' : '#94A3B8'} />
-                  <Text style={[styles.typeText, vehicleType === 'BIKE' && styles.typeTextActive]}>Xe máy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.typeButton, vehicleType === 'CAR' && styles.typeButtonActive]}
-                  onPress={() => setVehicleType('CAR')}
-                >
-                  <Ionicons name="car" size={20} color={vehicleType === 'CAR' ? '#FFFFFF' : '#94A3B8'} />
-                  <Text style={[styles.typeText, vehicleType === 'CAR' && styles.typeTextActive]}>Ô tô</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity
-              style={[styles.registerButton, loading && styles.disabledButton]}
-              onPress={handleRegister}
-              disabled={loading}
-              activeOpacity={0.85}
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="always"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* 1. COMPACT TOP CURVED HEADER */}
+          <View style={styles.headerWrapper}>
+            <LinearGradient
+              colors={['#174A1B', '#236E27', '#388E3C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.headerGradient,
+                { paddingTop: Math.max(insets.top, 20) + 10 },
+              ]}
             >
-              {loading ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.registerButtonText}>Đăng ký</Text>
-                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                </View>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => router.back()}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <View style={styles.headerTextGroup}>
+                <Image
+                  source={require('../../../assets/images/brand-logo.png')}
+                  style={styles.headerBrandLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.headerSubtitle}>Gia nhập Đội ngũ Tài xế NK Go</Text>
+              </View>
+
+              <Animated.View
+                style={[
+                  styles.headerRiderBadge,
+                  {
+                    opacity: riderOpacity,
+                    transform: [
+                      { translateX: riderSlideFromRight },
+                      { translateY: riderBob },
+                    ],
+                  },
+                ]}
+              >
+                <Image
+                  source={require('../../../assets/images/rider-login.png')}
+                  style={styles.headerRiderImage}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+            </LinearGradient>
           </View>
 
-          {/* Footer links */}
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>Đã có tài khoản? </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.loginLink}>Đăng nhập ngay</Text>
-            </TouchableOpacity>
+          {/* 2. FORM CARD */}
+          <View
+            style={[
+              styles.formCard,
+              {
+                paddingBottom: Math.max(insets.bottom, 14) + 8,
+              },
+            ]}
+          >
+            <View style={styles.titleGroup}>
+              <Text style={styles.welcomeTitle}>Đăng ký Đối tác Tài xế</Text>
+              <Text style={styles.welcomeSub}>Điền thông tin cá nhân và phương tiện hoạt động</Text>
+            </View>
+
+            <View style={styles.inputsSection}>
+              {/* Họ và tên */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'fullName' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="person-outline"
+                    size={17}
+                    color={focusedField === 'fullName' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Họ và tên tài xế"
+                  placeholderTextColor="#9EAAB7"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  onFocus={() => setFocusedField('fullName')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'fullName' ? '' : prev))}
+                />
+              </View>
+
+              {/* Email */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'email' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={17}
+                    color={focusedField === 'email' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Email của bạn"
+                  placeholderTextColor="#9EAAB7"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'email' ? '' : prev))}
+                />
+              </View>
+
+              {/* Số điện thoại */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'phone' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="call-outline"
+                    size={17}
+                    color={focusedField === 'phone' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Số điện thoại liên hệ"
+                  placeholderTextColor="#9EAAB7"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
+                  onFocus={() => setFocusedField('phone')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'phone' ? '' : prev))}
+                />
+              </View>
+
+              {/* Biển số xe */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'vehiclePlate' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="card-outline"
+                    size={17}
+                    color={focusedField === 'vehiclePlate' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Biển số xe (VD: 59-X1 123.45)"
+                  placeholderTextColor="#9EAAB7"
+                  autoCapitalize="characters"
+                  value={vehiclePlate}
+                  onChangeText={setVehiclePlate}
+                  onFocus={() => setFocusedField('vehiclePlate')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'vehiclePlate' ? '' : prev))}
+                />
+              </View>
+
+              {/* Loại phương tiện */}
+              <View style={styles.vehicleTypeRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    vehicleType === 'BIKE' && styles.typeButtonActive,
+                  ]}
+                  onPress={() => setVehicleType('BIKE')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="bicycle"
+                    size={18}
+                    color={vehicleType === 'BIKE' ? '#FFFFFF' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.typeText,
+                      vehicleType === 'BIKE' && styles.typeTextActive,
+                    ]}
+                  >
+                    Xe máy (Bike)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    vehicleType === 'CAR' && styles.typeButtonActive,
+                  ]}
+                  onPress={() => setVehicleType('CAR')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="car"
+                    size={18}
+                    color={vehicleType === 'CAR' ? '#FFFFFF' : '#64748B'}
+                  />
+                  <Text
+                    style={[
+                      styles.typeText,
+                      vehicleType === 'CAR' && styles.typeTextActive,
+                    ]}
+                  >
+                    Ô tô (Car)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Mật khẩu */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'password' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={17}
+                    color={focusedField === 'password' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Mật khẩu (tối thiểu 6 ký tự)"
+                  placeholderTextColor="#9EAAB7"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'password' ? '' : prev))}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color="#8E9AA8"
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Xác nhận mật khẩu */}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  focusedField === 'confirmPassword' && styles.inputWrapperFocused,
+                ]}
+              >
+                <View style={styles.iconCircle}>
+                  <Ionicons
+                    name="shield-checkmark-outline"
+                    size={17}
+                    color={focusedField === 'confirmPassword' ? '#2E7D32' : '#8E9AA8'}
+                  />
+                </View>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Xác nhận lại mật khẩu"
+                  placeholderTextColor="#9EAAB7"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  onFocus={() => setFocusedField('confirmPassword')}
+                  onBlur={() => setFocusedField((prev) => (prev === 'confirmPassword' ? '' : prev))}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={18}
+                    color="#8E9AA8"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Cụm Nút Đăng ký và Footer */}
+            <View style={styles.bottomSection}>
+              <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+                <TouchableOpacity
+                  onPress={handleRegister}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  disabled={loading}
+                  activeOpacity={0.9}
+                  style={styles.btnShadow}
+                >
+                  <LinearGradient
+                    colors={['#43A047', '#2E7D32']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.registerBtnGradient}
+                  >
+                    {loading ? (
+                      <View style={styles.loadingRow}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <Text style={styles.loadingText}>Đang xử lý...</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.registerBtnText}>Đăng ký Tài xế ngay</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+
+              <View style={styles.footerRow}>
+                <Text style={styles.footerNote}>Đã có tài khoản tài xế? </Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(auth)/login')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.loginLink}>Đăng nhập</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
-  keyboardView: {
+  container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 28,
-    paddingVertical: 20,
-    paddingBottom: 40,
+    backgroundColor: '#FFFFFF',
   },
-  topDecoration: {
-    position: 'absolute',
-    top: -80,
-    left: -60,
-    width: 200,
-    height: 200,
+  headerWrapper: {
+    width: '100%',
+    overflow: 'hidden',
   },
-  wave1: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(245, 166, 35, 0.08)',
-  },
-  wave2: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 213, 79, 0.1)',
-    top: 30,
-    left: 30,
-  },
-  headerContainer: {
+  headerGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 28,
+    paddingTop: Platform.OS === 'android' ? 22 : 14,
+    paddingBottom: 14,
+    paddingHorizontal: 18,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  iconContainer: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: '#F1F5F9',
+  backButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#3399FF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    marginRight: 10,
   },
-  iconInner: {
-    width: 52,
+  headerTextGroup: {
+    flex: 1,
+  },
+  headerBrandLogo: {
+    width: 155,
     height: 52,
-    borderRadius: 16,
-    backgroundColor: '#3399FF',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.92)',
+  },
+  headerRiderBadge: {
+    width: 78,
+    height: 78,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginBottom: 8,
-    textAlign: 'center',
+  headerRiderImage: {
+    width: 78,
+    height: 78,
   },
-  subtitle: {
-    fontSize: 14,
+
+  formCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'android' ? 14 : 20,
+    justifyContent: 'space-between',
+  },
+  titleGroup: {
+    marginBottom: 4,
+  },
+  welcomeTitle: {
+    fontSize: 21,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  welcomeSub: {
+    fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
-    textAlign: 'center',
-    paddingHorizontal: 12,
   },
-  formContainer: {
-    width: '100%',
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 6,
-    marginLeft: 4,
+
+  inputsSection: {
+    marginVertical: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 52,
-    backgroundColor: '#FFFFFF',
+    height: 43,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    shadowColor: '#E8D5A3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
-  inputFocused: {
-    borderColor: '#3399FF',
-    backgroundColor: '#FFFCF0',
-    shadowColor: '#3399FF',
-    shadowOpacity: 0.12,
+  inputWrapperFocused: {
+    borderColor: '#2E7D32',
+    backgroundColor: '#FFFFFF',
   },
-  inputIcon: {
-    marginRight: 10,
+  iconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
   },
-  input: {
+  inputField: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13.5,
+    fontWeight: '500',
     color: '#0F172A',
-    fontWeight: '500',
   },
-  eyeButton: {
-    padding: 4,
+  eyeBtn: {
+    padding: 6,
   },
-  registerButton: {
-    height: 54,
-    backgroundColor: '#3399FF',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#3399FF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  disabledButton: {
-    backgroundColor: '#E8D5A3',
-  },
-  buttonContent: {
+  vehicleTypeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  registerButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  footerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  loginLink: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#3399FF',
+    gap: 10,
+    marginBottom: 8,
   },
   typeButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 52,
-    backgroundColor: '#FFFFFF',
+    gap: 6,
+    height: 42,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    borderRadius: 14,
+    borderRadius: 12,
   },
   typeButtonActive: {
-    backgroundColor: '#3399FF',
-    borderColor: '#3399FF',
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
   },
   typeText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#64748B',
   },
   typeTextActive: {
     color: '#FFFFFF',
+  },
+
+  bottomSection: {
+    marginTop: 4,
+  },
+  btnShadow: {
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.24,
+    shadowRadius: 8,
+    elevation: 4,
+    borderRadius: 22,
+  },
+  registerBtnGradient: {
+    height: 46,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  registerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  footerNote: {
+    fontSize: 12.5,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  loginLink: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#2E7D32',
   },
 });

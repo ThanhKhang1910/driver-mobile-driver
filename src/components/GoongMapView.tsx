@@ -451,7 +451,7 @@ export const GoongMapView = forwardRef<GoongMapViewRef, GoongMapViewProps>(
               ['get', 'pointType'],
               'start', '#10B981',
               'end', '#EF4444',
-              '#3B82F6'
+              '#388E3C'
             ]
           }
         });

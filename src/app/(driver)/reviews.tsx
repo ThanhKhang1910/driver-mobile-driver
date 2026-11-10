@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axiosClient from '@/api/axiosClient';
@@ -24,11 +26,33 @@ interface DriverReview {
 
 export default function DriverReviewsScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [reviews, setReviews] = useState<DriverReview[]>([]);
   const [averageRating, setAverageRating] = useState(5.0);
   const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // 60FPS Entry Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const contentAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(120, [
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(contentAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 45,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, contentAnim]);
 
   const fetchReviews = async () => {
     try {
@@ -91,72 +115,106 @@ export default function DriverReviewsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Đánh Giá Của Khách</Text>
-        <View style={{ width: 38 }} />
-      </View>
+    <View style={styles.container}>
+      {/* Header NK Go Green Gradient */}
+      <Animated.View
+        style={{
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <LinearGradient
+          colors={['#174A1B', '#236E27', '#388E3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Đánh Giá Của Khách</Text>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
+      </Animated.View>
 
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#F59E0B" />
+          <ActivityIndicator size="large" color="#2E7D32" />
           <Text style={styles.loadingText}>Đang tải đánh giá...</Text>
         </View>
       ) : (
-        <FlatList
-          data={reviews}
-          keyExtractor={(item) => String(item.review_id)}
-          renderItem={renderReviewItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#F59E0B']} />
-          }
-          ListHeaderComponent={
-            <>
-              {/* Overall Rating Hero Card */}
-              <View style={styles.heroCard}>
-                <View style={styles.heroLeft}>
-                  <Text style={styles.bigScore}>{averageRating}</Text>
-                  <View style={styles.starsRowLarge}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Ionicons key={i} name="star" size={16} color="#F59E0B" />
-                    ))}
+        <Animated.View
+          style={{
+            flex: 1,
+            opacity: contentAnim,
+            transform: [
+              {
+                translateY: contentAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [24, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          <FlatList
+            data={reviews}
+            keyExtractor={(item) => String(item.review_id)}
+            renderItem={renderReviewItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32']} />
+            }
+            ListHeaderComponent={
+              <>
+                {/* Overall Rating Hero Card */}
+                <View style={styles.heroCard}>
+                  <View style={styles.heroLeft}>
+                    <Text style={styles.bigScore}>{averageRating}</Text>
+                    <View style={styles.starsRowLarge}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Ionicons key={i} name="star" size={16} color="#F59E0B" />
+                      ))}
+                    </View>
+                    <Text style={styles.totalCount}>Dựa trên {totalReviews} lượt đánh giá</Text>
                   </View>
-                  <Text style={styles.totalCount}>Dựa trên {totalReviews} lượt đánh giá</Text>
+
+                  <View style={styles.heroRight}>
+                    <View style={styles.badgeBox}>
+                      <Text style={styles.badgeEmoji}>🏆</Text>
+                      <Text style={styles.badgeTitle}>Tài xế tiêu chuẩn 5 sao</Text>
+                      <Text style={styles.badgeSub}>Luôn đúng giờ & thân thiện</Text>
+                    </View>
+                  </View>
                 </View>
 
-                <View style={styles.heroRight}>
-                  <View style={styles.badgeBox}>
-                    <Text style={styles.badgeEmoji}>🏆</Text>
-                    <Text style={styles.badgeTitle}>Tài xế tiêu chuẩn 5 sao</Text>
-                    <Text style={styles.badgeSub}>Luôn đúng giờ & thân thiện</Text>
-                  </View>
+                {/* Section Header */}
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Nhận xét gần đây ({reviews.length})</Text>
                 </View>
+              </>
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Ionicons name="chatbubbles-outline" size={60} color="#CBD5E1" />
+                <Text style={styles.emptyTitle}>Chưa có nhận xét nào</Text>
+                <Text style={styles.emptySub}>
+                  Sau mỗi chuyến đi hoàn thành, phản hồi từ khách hàng sẽ xuất hiện tại đây
+                </Text>
               </View>
-
-              {/* Section Header */}
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Nhận xét gần đây ({reviews.length})</Text>
-              </View>
-            </>
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Ionicons name="chatbubbles-outline" size={60} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>Chưa có nhận xét nào</Text>
-              <Text style={styles.emptySub}>
-                Sau mỗi chuyến đi hoàn thành, phản hồi từ khách hàng sẽ xuất hiện tại đây
-              </Text>
-            </View>
-          }
-        />
+            }
+          />
+        </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -169,24 +227,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#174A1B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   backBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
   listContent: {
     padding: 16,
@@ -197,7 +259,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
@@ -229,10 +291,12 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
   },
   badgeBox: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#E8F5E9',
     borderRadius: 12,
     padding: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
   badgeEmoji: {
     fontSize: 22,
@@ -241,12 +305,12 @@ const styles = StyleSheet.create({
   badgeTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#B45309',
+    color: '#1B5E20',
     textAlign: 'center',
   },
   badgeSub: {
     fontSize: 10,
-    color: '#D97706',
+    color: '#2E7D32',
     textAlign: 'center',
     marginTop: 2,
   },
@@ -281,14 +345,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#3399FF',
+    color: '#2E7D32',
   },
   customerName: {
     fontSize: 13,

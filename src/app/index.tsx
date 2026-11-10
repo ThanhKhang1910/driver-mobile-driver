@@ -8,7 +8,7 @@ export default function Index() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#3399FF" />
+        <ActivityIndicator size="large" color="#2E7D32" />
         <Text style={styles.text}>Đang tải hệ thống...</Text>
       </View>
     );

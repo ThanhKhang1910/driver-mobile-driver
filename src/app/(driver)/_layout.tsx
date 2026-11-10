@@ -9,7 +9,7 @@ export default function DriverLayout() {
         options={{ 
           headerShown: true,
           title: 'Chuyến xe hiện tại', 
-          headerStyle: { backgroundColor: '#3399FF' }, 
+          headerStyle: { backgroundColor: '#236E27' }, 
           headerTintColor: '#FFF' 
         }} 
       />
