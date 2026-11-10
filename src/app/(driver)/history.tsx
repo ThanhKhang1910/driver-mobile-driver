@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,8 +8,10 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axiosClient from '@/api/axiosClient';
@@ -29,10 +31,42 @@ interface HistoryOrder {
 
 export default function DriverHistoryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'COMPLETED' | 'CANCELLED'>('ALL');
+
+  // 60FPS Entry & Tab Switch Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const listAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(100, [
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(listAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 45,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, listAnim]);
+
+  useEffect(() => {
+    listAnim.setValue(0);
+    Animated.spring(listAnim, {
+      toValue: 1,
+      friction: 8,
+      tension: 50,
+      useNativeDriver: true,
+    }).start();
+  }, [filterStatus, listAnim]);
 
   const fetchHistory = async () => {
     try {
@@ -64,11 +98,11 @@ export default function DriverHistoryScreen() {
 
   const getServiceBadge = (type: string) => {
     const sType = (type || 'FOOD').toUpperCase();
-    if (sType === 'BIKE') return { label: '🛵 Xe ôm Bike', color: '#38A169', bg: '#F0FFF4' };
+    if (sType === 'BIKE') return { label: '🛵 Xe ôm Bike', color: '#2E7D32', bg: '#E8F5E9' };
     if (sType === 'CAR' || sType === 'CAR_4' || sType === 'CAR_7')
-      return { label: '🚘 Chở khách Car', color: '#8B5CF6', bg: '#F5F3FF' };
-    if (sType === 'DELIVERY') return { label: '📦 Giao hàng', color: '#E53E3E', bg: '#FFF5F5' };
-    return { label: '🍔 Giao đồ ăn', color: '#3399FF', bg: '#EFF6FF' };
+      return { label: '🚘 Chở khách Car', color: '#388E3C', bg: '#F1F8E9' };
+    if (sType === 'DELIVERY') return { label: '📦 Giao hàng', color: '#D97706', bg: '#FFF8E1' };
+    return { label: '🍔 Giao đồ ăn', color: '#10B981', bg: '#ECFDF5' };
   };
 
   const renderItem = ({ item }: { item: HistoryOrder }) => {
@@ -114,7 +148,7 @@ export default function DriverHistoryScreen() {
 
         <View style={styles.routeBox}>
           <View style={styles.routeItem}>
-            <Ionicons name="radio-button-on" size={14} color="#3399FF" />
+            <Ionicons name="radio-button-on" size={14} color="#2E7D32" />
             <Text style={styles.addressText} numberOfLines={1}>
               {item.pickup_address || item.shop_name || 'Điểm đón'}
             </Text>
@@ -141,15 +175,34 @@ export default function DriverHistoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lịch Sử Cuốc Xe</Text>
-        <View style={{ width: 38 }} />
-      </View>
+    <View style={styles.container}>
+      {/* Header NK Go Green Gradient */}
+      <Animated.View
+        style={{
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <LinearGradient
+          colors={['#174A1B', '#236E27', '#388E3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Lịch Sử Cuốc Xe</Text>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
+      </Animated.View>
 
       {/* Filter Chips */}
       <View style={styles.filterRow}>
@@ -199,31 +252,46 @@ export default function DriverHistoryScreen() {
       {/* List */}
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#3399FF" />
+          <ActivityIndicator size="large" color="#2E7D32" />
           <Text style={styles.loadingText}>Đang tải lịch sử chuyến xe...</Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredOrders}
-          keyExtractor={(item) => String(item.order_id)}
-          renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3399FF']} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyBox}>
-              <Ionicons name="document-text-outline" size={60} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>Chưa có lịch sử chuyến xe</Text>
-              <Text style={styles.emptySub}>
-                Các chuyến xe và đơn giao hàng hoàn thành sẽ hiển thị tại đây
-              </Text>
-            </View>
-          }
-        />
+        <Animated.View
+          style={{
+            flex: 1,
+            opacity: listAnim,
+            transform: [
+              {
+                translateY: listAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          <FlatList
+            data={filteredOrders}
+            keyExtractor={(item) => String(item.order_id)}
+            renderItem={renderItem}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2E7D32']} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyBox}>
+                <Ionicons name="document-text-outline" size={60} color="#CBD5E1" />
+                <Text style={styles.emptyTitle}>Chưa có lịch sử chuyến xe</Text>
+                <Text style={styles.emptySub}>
+                  Các chuyến xe và đơn giao hàng hoàn thành sẽ hiển thị tại đây
+                </Text>
+              </View>
+            }
+          />
+        </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -236,42 +304,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#174A1B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   backBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#FFFFFF',
   },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
     gap: 8,
   },
   filterChip: {
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   filterChipActive: {
-    backgroundColor: '#3399FF',
+    backgroundColor: '#2E7D32',
+    borderColor: '#2E7D32',
   },
   filterChipText: {
     fontSize: 12,
@@ -290,7 +363,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
     marginBottom: 12,
   },
   cardHeader: {
@@ -366,7 +439,7 @@ const styles = StyleSheet.create({
   earningsAmount: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#10B981',
+    color: '#2E7D32',
   },
   loadingBox: {
     alignItems: 'center',

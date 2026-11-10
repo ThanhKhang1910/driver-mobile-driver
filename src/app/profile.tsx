@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,8 +12,10 @@ import {
   Modal,
   TextInput,
   Image,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,6 +38,7 @@ interface DriverDocsData {
 
 export default function DriverProfileScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, logout, refreshUser } = useAuth();
 
   const [walletBalance, setWalletBalance] = useState<number>(0);
@@ -67,10 +70,28 @@ export default function DriverProfileScreen() {
   // Contract Modal
   const [showContractModal, setShowContractModal] = useState<boolean>(false);
 
+  // 60FPS Entry Animations
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     fetchDriverStats();
     loadSettings();
-  }, []);
+    Animated.stagger(120, [
+      Animated.spring(headerAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(fadeAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [headerAnim, fadeAnim]);
 
   const loadSettings = async () => {
     try {
@@ -274,37 +295,69 @@ export default function DriverProfileScreen() {
   const vehicleModel = isCar ? 'Toyota Vios 1.5G • Trắng Sứ' : 'Honda AirBlade 150 • Đen Nhám';
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header Bar */}
-      <View style={styles.headerTop}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hồ sơ Đối tác Tài xế</Text>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchDriverStats} activeOpacity={0.7}>
-          {loading ? (
-            <ActivityIndicator size="small" color="#2563EB" />
-          ) : (
-            <Ionicons name="reload-outline" size={20} color="#2563EB" />
-          )}
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      {/* Header Bar NK Go Green Gradient */}
+      <Animated.View
+        style={{
+          opacity: headerAnim,
+          transform: [
+            {
+              translateY: headerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <LinearGradient
+          colors={['#174A1B', '#236E27', '#388E3C']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerTop, { paddingTop: Math.max(insets.top, 20) + 8 }]}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Hồ sơ Đối tác Tài xế</Text>
+          <TouchableOpacity style={styles.refreshBtn} onPress={fetchDriverStats} activeOpacity={0.7}>
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="reload-outline" size={20} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+        </LinearGradient>
+      </Animated.View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Profile Card Header */}
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              {
+                translateY: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [24, 0],
+                }),
+              },
+            ],
+          }}
+        >
+          {/* Profile Card Header */}
         <View style={styles.driverCardHeader}>
           <View style={styles.driverInfoLeft}>
             <View style={styles.verifiedRow}>
               <View style={styles.activeDot} />
-              <Text style={styles.verifiedText}>Đối tác chính thức NKGO</Text>
+              <Text style={styles.verifiedText}>Đối tác chính thức NK Go</Text>
             </View>
 
-            <Text style={styles.driverName}>{user?.fullName || 'Tài xế NKGO'}</Text>
+            <Text style={styles.driverName}>{user?.fullName || 'Tài xế NK Go'}</Text>
             
             <TouchableOpacity style={styles.phoneRow} onPress={() => setShowPhoneModal(true)} activeOpacity={0.7}>
               <Ionicons name="call-outline" size={14} color="#64748B" style={{ marginRight: 4 }} />
               <Text style={styles.phoneText}>{phoneNumber}</Text>
-              <Ionicons name="create-outline" size={14} color="#3B82F6" style={{ marginLeft: 4 }} />
+              <Ionicons name="create-outline" size={14} color="#2E7D32" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
 
             <View style={styles.codeBadge}>
@@ -356,7 +409,7 @@ export default function DriverProfileScreen() {
 
           <View style={styles.statBox}>
             <View style={styles.statIconRow}>
-              <Ionicons name="flash" size={18} color="#3B82F6" />
+              <Ionicons name="flash" size={18} color="#388E3C" />
               <Text style={styles.statNumber}>98%</Text>
             </View>
             <Text style={styles.statLabel}>Tỷ lệ nhận</Text>
@@ -376,11 +429,11 @@ export default function DriverProfileScreen() {
         {/* 3 Quick Action Buttons: Ví thu nhập, Lịch sử, Đánh giá */}
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity 
-            style={[styles.quickActionItem, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+            style={[styles.quickActionItem, { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' }]}
             onPress={() => router.push('/(driver)/earnings' as any)}
             activeOpacity={0.7}
           >
-            <View style={[styles.quickIconCircle, { backgroundColor: '#3B82F6' }]}>
+            <View style={[styles.quickIconCircle, { backgroundColor: '#388E3C' }]}>
               <Ionicons name="wallet" size={20} color="#FFFFFF" />
             </View>
             <Text style={styles.quickActionTitle}>Ví & Thu nhập</Text>
@@ -415,7 +468,7 @@ export default function DriverProfileScreen() {
         {/* Section: Thông tin phương tiện */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name={isCar ? 'car' : 'bicycle'} size={18} color="#2563EB" style={{ marginRight: 8 }} />
+            <Ionicons name={isCar ? 'car' : 'bicycle'} size={18} color="#2E7D32" style={{ marginRight: 8 }} />
             <Text style={styles.sectionTitle}>Thông tin Phương tiện hoạt động</Text>
           </View>
           
@@ -442,7 +495,7 @@ export default function DriverProfileScreen() {
         {/* Section: Hồ sơ & Giấy tờ pháp lý */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="document-text" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+            <Ionicons name="document-text" size={18} color="#2E7D32" style={{ marginRight: 8 }} />
             <Text style={styles.sectionTitle}>Hồ sơ & Giấy tờ pháp lý</Text>
           </View>
 
@@ -542,7 +595,7 @@ export default function DriverProfileScreen() {
         {/* Section: Cài đặt ứng dụng tài xế */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="settings-sharp" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+            <Ionicons name="settings-sharp" size={18} color="#2E7D32" style={{ marginRight: 8 }} />
             <Text style={styles.sectionTitle}>Cài đặt cuốc xe & Bản đồ</Text>
           </View>
 
@@ -554,8 +607,8 @@ export default function DriverProfileScreen() {
             <Switch
               value={loudNotification}
               onValueChange={handleToggleLoud}
-              trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
-              thumbColor={loudNotification ? '#2563EB' : '#F1F5F9'}
+              trackColor={{ false: '#CBD5E1', true: '#C8E6C9' }}
+              thumbColor={loudNotification ? '#2E7D32' : '#F1F5F9'}
             />
           </View>
           <View style={styles.innerDivider} />
@@ -568,8 +621,8 @@ export default function DriverProfileScreen() {
             <Switch
               value={autoNavigate}
               onValueChange={handleToggleAutoNav}
-              trackColor={{ false: '#CBD5E1', true: '#BFDBFE' }}
-              thumbColor={autoNavigate ? '#2563EB' : '#F1F5F9'}
+              trackColor={{ false: '#CBD5E1', true: '#C8E6C9' }}
+              thumbColor={autoNavigate ? '#2E7D32' : '#F1F5F9'}
             />
           </View>
         </View>
@@ -577,7 +630,7 @@ export default function DriverProfileScreen() {
         {/* Section: Hỗ trợ tài xế */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="help-buoy" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+            <Ionicons name="help-buoy" size={18} color="#2E7D32" style={{ marginRight: 8 }} />
             <Text style={styles.sectionTitle}>Hỗ trợ & Pháp lý Đối tác</Text>
           </View>
 
@@ -614,7 +667,7 @@ export default function DriverProfileScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.menuRowIconWrap}>
-              <Ionicons name="newspaper" size={18} color="#2563EB" />
+              <Ionicons name="newspaper" size={18} color="#2E7D32" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.menuRowText}>Hợp đồng điện tử & Điều khoản đối tác</Text>
@@ -632,6 +685,7 @@ export default function DriverProfileScreen() {
 
         {/* Version info */}
         <Text style={styles.versionText}>NKGO Driver App • Phiên bản v1.0.0 (Đối tác)</Text>
+        </Animated.View>
       </ScrollView>
 
       {/* Modal sửa SĐT */}
@@ -763,7 +817,7 @@ export default function DriverProfileScreen() {
             {/* Modal Header */}
             <View style={styles.contractHeaderTop}>
               <View style={styles.contractHeaderLeft}>
-                <Ionicons name="shield-checkmark" size={20} color="#2563EB" />
+                <Ionicons name="shield-checkmark" size={20} color="#2E7D32" />
                 <View>
                   <Text style={styles.contractHeaderMainTitle}>Hợp Đồng Điện Tử Đối Tác</Text>
                   <Text style={styles.contractHeaderSubTitle}>Chứng thực số theo Luật Giao dịch Điện tử</Text>
@@ -810,7 +864,7 @@ export default function DriverProfileScreen() {
                 </View>
 
                 {/* BÊN B */}
-                <View style={[styles.partyBox, { marginTop: 12, borderColor: '#BFDBFE', backgroundColor: '#F0F9FF' }]}>
+                <View style={[styles.partyBox, { marginTop: 12, borderColor: '#C8E6C9', backgroundColor: '#F0F9FF' }]}>
                   <Text style={[styles.partyTitle, { color: '#1E40AF' }]}>BÊN B: ĐỐI TÁC TÀI XẾ CÔNG NGHỆ (ĐỐI TÁC ĐỘC LẬP)</Text>
                   <Text style={styles.partyRow}><Text style={styles.boldText}>Họ và tên đối tác: </Text>{user?.fullName || 'Trần Thanh Khang'}</Text>
                   <Text style={styles.partyRow}><Text style={styles.boldText}>Mã định danh đối tác: </Text>#TX-{driverId}</Text>
@@ -933,43 +987,47 @@ export default function DriverProfileScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F8FAFC',
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#174A1B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F8FAFC',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   refreshBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#EFF6FF',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -998,13 +1056,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: '#2E7D32',
     marginRight: 6,
   },
   verifiedText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#059669',
+    color: '#2E7D32',
     letterSpacing: 0.2,
   },
   driverName: {
@@ -1025,17 +1083,17 @@ const styles = StyleSheet.create({
   },
   codeBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E8F5E9',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#C8E6C9',
   },
   codeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#3B82F6',
+    color: '#2E7D32',
   },
   avatarWrap: {
     position: 'relative',
@@ -1045,10 +1103,10 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#2E7D32',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#2563EB',
+    shadowColor: '#2E7D32',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.28,
     shadowRadius: 8,
@@ -1138,7 +1196,7 @@ const styles = StyleSheet.create({
   quickActionSub: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#2E7D32',
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
@@ -1377,7 +1435,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#2E7D32',
     paddingVertical: 12,
     borderRadius: 10,
   },
@@ -1493,7 +1551,7 @@ const styles = StyleSheet.create({
   phoneInput: {
     height: 48,
     borderWidth: 1.5,
-    borderColor: '#3B82F6',
+    borderColor: '#388E3C',
     borderRadius: 10,
     paddingHorizontal: 14,
     fontSize: 16,
@@ -1524,7 +1582,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#2E7D32',
     justifyContent: 'center',
     alignItems: 'center',
   },

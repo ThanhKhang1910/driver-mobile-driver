@@ -361,7 +361,7 @@ export default function ActiveRide() {
               origin={location?.coords || { latitude: currentLatitude, longitude: currentLongitude }}
               destination={destCoords}
               vehicle="bike"
-              routeColor="#3399FF"
+              routeColor="#2E7D32"
               routeWidth={5}
               hideOriginEndpoint={true}
               destinationTitle={destinationTitle}
@@ -384,7 +384,7 @@ export default function ActiveRide() {
           <Text style={styles.title}>
             {isFood ? '🍔 Đơn giao đồ ăn' : isDelivery ? '📦 Đơn giao bưu phẩm' : '🛵 Chuyến xe chở khách'}
           </Text>
-          <View style={{ backgroundColor: '#EBF8FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+          <View style={{ backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#2B6CB0' }}>#{id}</Text>
           </View>
         </View>
@@ -464,7 +464,7 @@ export default function ActiveRide() {
 
                 {/* Nút Nhắn tin Chat */}
                 <TouchableOpacity 
-                  style={[styles.actionBtnCircle, { backgroundColor: '#3B82F6' }]}
+                  style={[styles.actionBtnCircle, { backgroundColor: '#388E3C' }]}
                   onPress={() => router.push(`/chat/${id}`)}
                   activeOpacity={0.8}
                 >
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   priceValue: {
     fontSize: 24,
-    color: '#3399FF',
+    color: '#2E7D32',
     fontWeight: 'bold',
   },
   btnActionGroup: {
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   completeBtn: {
-    backgroundColor: '#3399FF',
+    backgroundColor: '#2E7D32',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',

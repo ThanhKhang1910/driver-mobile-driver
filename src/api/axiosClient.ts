@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 
 // IP Wi-Fi hiện tại của máy tính (cập nhật khi đổi mạng Wi-Fi)
-const CURRENT_LAN_IP = '192.168.102.43';
+const CURRENT_LAN_IP = process.env.EXPO_PUBLIC_LAN_IP || '192.168.0.103';
 
 const getBaseURL = () => {
   if (Platform.OS === 'web') {
@@ -23,8 +23,15 @@ const getBaseURL = () => {
   const hostUri = Constants.expoConfig?.hostUri;
   let host = hostUri ? hostUri.split(':')[0] : CURRENT_LAN_IP;
 
-  // Nếu host là link tunnel của Expo (*.exp.direct), ngrok không mở port 5005 -> Ép dùng IP Wi-Fi máy tính
-  if (host.includes('exp.direct') || host.includes('tunnel') || host === 'localhost' || host === '127.0.0.1') {
+  // Nếu host là link tunnel của Expo (*.exp.direct) hoặc IP ảo VPN (26.x / 172.x) -> Ép dùng IP Wi-Fi máy tính
+  if (
+    host.includes('exp.direct') ||
+    host.includes('tunnel') ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host.startsWith('26.') ||
+    host.startsWith('172.')
+  ) {
     host = CURRENT_LAN_IP;
   }
 

@@ -125,14 +125,14 @@ export default function ChatScreen() {
           <Text style={styles.headerSubtitle}>Mã đơn: {orderId}</Text>
         </View>
         <TouchableOpacity style={styles.callBtn}>
-          <Ionicons name="call" size={20} color="#3399FF" />
+          <Ionicons name="call" size={20} color="#2E7D32" />
         </TouchableOpacity>
       </View>
 
       {/* Chat Area */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#3399FF" />
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
       ) : (
         <FlatList
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
   },
